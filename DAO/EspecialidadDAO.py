@@ -1,7 +1,7 @@
 import sqlite3      
 
-from BDD.Conexion import get_conexion
-from Model.Especialidad import Especialidad
+from Backend.BDD.Conexion import get_conexion
+from Backend.Model.Especialidad import Especialidad
 
 class EspecialidadDAO:
     """

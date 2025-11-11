@@ -1,11 +1,11 @@
 import sqlite3
 # Importamos la función para conectarnos desde la carpeta BDD
-from BDD.Conexion import get_conexion
+from Backend.BDD.Conexion import get_conexion
 
 # Importamos la clase Paciente desde la carpeta Model
 # (Asumimos que tu archivo se llama paciente.py y la clase Paciente)
 # Asegúrate de que tu clase Paciente tenga un __init__ que coincida
-from Model.Paciente import Paciente
+from Backend.Model.Paciente import Paciente
 
 class PacienteDAO:
     """

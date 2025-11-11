@@ -1,8 +1,8 @@
 import sqlite3
 # En DAO/MedicoDAO.py
 
-from BDD.Conexion import get_conexion
-from Model.Medico import Medico # Asegúrate de que el archivo se llame Medico.py
+from Backend.BDD.Conexion import get_conexion
+from Backend.Model.Medico import Medico # Asegúrate de que el archivo se llame Medico.py
 
 class MedicoDAO:
     """

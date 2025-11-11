@@ -1,8 +1,8 @@
 import sqlite3
 # En DAO/ObraSocialDAO.py
 
-from BDD.Conexion import get_conexion
-from Model.ObraSocial import ObraSocial # Importa el modelo que acabamos de crear
+from Backend.BDD.Conexion import get_conexion
+from Backend.Model.ObraSocial import ObraSocial # Importa el modelo que acabamos de crear
 
 class ObraSocialDAO:
     """

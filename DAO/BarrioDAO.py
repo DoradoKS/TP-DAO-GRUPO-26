@@ -1,7 +1,7 @@
 import sqlite3
 
-from BDD.Conexion import get_conexion
-from Model.Barrio import Barrio  # Asegúrate de que el archivo se llame Consultorio.py
+from Backend.BDD.Conexion import get_conexion
+from Backend.Model.Barrio import Barrio  # Asegúrate de que el archivo se llame Consultorio.py
 
 class BarrioDAO:
     """
