@@ -3,6 +3,7 @@ import sqlite3
 
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Medico import Medico # Asegúrate de que el archivo se llame Medico.py
+from Backend.Validaciones.validaciones import Validaciones
 
 class MedicoDAO:
     """
@@ -14,6 +15,25 @@ class MedicoDAO:
         """
         Inserta un nuevo objeto Medico en la base de datos.
         """
+        # Validaciones previas
+        datos = {
+            'usuario': medico.usuario,
+            'matricula': medico.matricula,
+            'nombre': medico.nombre,
+            'apellido': medico.apellido,
+            'tipo_dni': medico.tipo_dni,
+            'dni': medico.dni,
+            'email': medico.email,
+            'telefono': medico.telefono
+        }
+
+        es_valido, errores = Validaciones.validar_medico_completo(datos)
+        if not es_valido:
+            print("❌ Errores de validación al crear médico:")
+            for err in errores:
+                print(f"   - {err}")
+            return None
+
         conn = None
         try:
             conn = get_conexion()
@@ -117,6 +137,25 @@ class MedicoDAO:
         """
         Actualiza los datos de un médico en la DB, buscando por id_medico.
         """
+        # Validaciones previas (excluir el propio registro en la verificación de unicidad)
+        datos = {
+            'usuario': medico.usuario,
+            'matricula': medico.matricula,
+            'nombre': medico.nombre,
+            'apellido': medico.apellido,
+            'tipo_dni': medico.tipo_dni,
+            'dni': medico.dni,
+            'email': medico.email,
+            'telefono': medico.telefono
+        }
+
+        es_valido, errores = Validaciones.validar_medico_completo(datos, id_medico_actual=medico.id_medico)
+        if not es_valido:
+            print("❌ Errores de validación al actualizar médico:")
+            for err in errores:
+                print(f"   - {err}")
+            return False
+
         conn = None
         try:
             conn = get_conexion()

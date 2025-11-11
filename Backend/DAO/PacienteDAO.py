@@ -1,11 +1,7 @@
 import sqlite3
-# Importamos la función para conectarnos desde la carpeta BDD
 from Backend.BDD.Conexion import get_conexion
-
-# Importamos la clase Paciente desde la carpeta Model
-# (Asumimos que tu archivo se llama paciente.py y la clase Paciente)
-# Asegúrate de que tu clase Paciente tenga un __init__ que coincida
 from Backend.Model.Paciente import Paciente
+from Backend.Validaciones.validaciones import Validaciones
 
 class PacienteDAO:
     """
@@ -19,6 +15,25 @@ class PacienteDAO:
         Recibe un objeto de tipo Paciente y lo inserta en la DB.
         Retorna el ID del nuevo paciente o None si falla.
         """
+        # Validaciones previas
+        datos = {
+            'usuario': paciente.usuario,
+            'nombre': paciente.nombre,
+            'apellido': paciente.apellido,
+            'fecha_nacimiento': paciente.fecha_nacimiento,
+            'tipo_dni': paciente.tipo_dni,
+            'dni': paciente.dni,
+            'email': paciente.email,
+            'telefono': paciente.telefono
+        }
+
+        es_valido, errores = Validaciones.validar_paciente_completo(datos)
+        if not es_valido:
+            print("❌ Errores de validación al crear paciente:")
+            for err in errores:
+                print(f"   - {err}")
+            return None
+
         conn = None
         try:
             conn = get_conexion()
@@ -54,8 +69,6 @@ class PacienteDAO:
             if conn:
                 conn.close()
 
-    # --- NUEVOS MÉTODOS ---
-
     def obtener_todos_los_pacientes(self):
         """
         Retorna una lista de objetos Paciente con todos los registros.
@@ -71,10 +84,6 @@ class PacienteDAO:
             filas = cursor.fetchall()
 
             for fila in filas:
-                # Creamos un objeto Paciente por cada fila
-                # NOTA: ¡El orden aquí debe coincidir con tu clase Paciente!
-                # Asumo que tu clase Paciente recibe los campos en este orden.
-                # Ajusta el __init__ de tu Modelo si es necesario.
                 p = Paciente(
                     id_paciente=fila[0],
                     id_barrio=fila[1],
@@ -142,6 +151,25 @@ class PacienteDAO:
         Recibe un objeto Paciente con datos actualizados
         y los aplica en la base de datos (busca por id_paciente).
         """
+        # Validaciones previas (excluir el propio registro en la verificación de unicidad)
+        datos = {
+            'usuario': paciente.usuario,
+            'nombre': paciente.nombre,
+            'apellido': paciente.apellido,
+            'fecha_nacimiento': paciente.fecha_nacimiento,
+            'tipo_dni': paciente.tipo_dni,
+            'dni': paciente.dni,
+            'email': paciente.email,
+            'telefono': paciente.telefono
+        }
+
+        es_valido, errores = Validaciones.validar_paciente_completo(datos, id_paciente_actual=paciente.id_paciente)
+        if not es_valido:
+            print("❌ Errores de validación al actualizar paciente:")
+            for err in errores:
+                print(f"   - {err}")
+            return False
+
         conn = None
         try:
             conn = get_conexion()

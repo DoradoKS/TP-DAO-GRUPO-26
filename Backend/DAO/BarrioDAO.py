@@ -1,11 +1,10 @@
 import sqlite3
 
 from Backend.BDD.Conexion import get_conexion
-from Backend.Model.Barrio import Barrio  # Asegúrate de que el archivo se llame Consultorio.py
+from Backend.Model.Barrio import Barrio 
 
 class BarrioDAO:
     """
-    DAO para la entidad Barrio.
     Gestiona las operaciones CRUD en la tabla Barrio.
     """
 
