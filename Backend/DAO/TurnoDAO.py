@@ -2,6 +2,7 @@ import sqlite3
 
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Turno import Turno
+from Backend.DAO.UsuarioDAO import UsuarioDAO
 from datetime import datetime, timedelta
 
 class TurnoDAO:
@@ -10,13 +11,18 @@ class TurnoDAO:
     Gestiona las operaciones CRUD en la tabla Turno.
     """
 
-    def crear_turno(self, turno):
+    def crear_turno(self, turno, usuario_actual):
         """
         Inserta un nuevo objeto Turno en la base de datos.
         """
         # Validaciones básicas de campos requeridos
         if not turno or not turno.id_paciente or not turno.id_medico or not turno.fecha_hora:
             print("Falta información requerida para crear el turno (paciente, médico o fecha_hora).")
+            return None
+        # Permisos: solo Administrador puede crear turnos
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede crear turnos.")
             return None
 
         # Parsear fecha/hora y calcular ventana (30 minutos)
@@ -186,7 +192,7 @@ class TurnoDAO:
             if conn:
                 conn.close()
 
-    def eliminar_turno(self, id_turno):
+    def eliminar_turno(self, id_turno, usuario_actual):
         """
         Elimina un turno dado su ID.
         """
@@ -195,6 +201,11 @@ class TurnoDAO:
             conn = get_conexion()
             cursor = conn.cursor()
 
+            # Permisos: solo Administrador puede eliminar turnos
+            rol = UsuarioDAO().obtener_rol(usuario_actual)
+            if rol != "Administrador":
+                print("Permiso denegado: solo Administrador puede eliminar turnos.")
+                return False
             sql = "DELETE FROM Turno WHERE id_turno = ?"
             cursor.execute(sql, (id_turno,))
             conn.commit()
@@ -210,13 +221,18 @@ class TurnoDAO:
             if conn:
                 conn.close()
 
-    def actualizar_turno(self, turno):
+    def actualizar_turno(self, turno, usuario_actual):
         """
         Actualiza los datos de un turno en la DB, buscando por id_turno.
         """
         # Validaciones básicas
         if not turno or not turno.id_turno or not turno.id_paciente or not turno.id_medico or not turno.fecha_hora:
-            print("❌ Falta información requerida para actualizar el turno.")
+            print("Falta información requerida para actualizar el turno.")
+            return False
+        # Permisos: solo Administrador puede actualizar turnos
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede actualizar turnos.")
             return False
 
         # Parsear fecha/hora y calcular ventana (30 minutos)
@@ -226,7 +242,12 @@ class TurnoDAO:
             except ValueError:
                 inicio = datetime.strptime(str(turno.fecha_hora), "%Y-%m-%d %H:%M")
         except ValueError:
-            print("❌ Formato de fecha_hora inválido. Use 'YYYY-MM-DD HH:MM' o 'YYYY-MM-DD HH:MM:SS'.")
+            print("Formato de fecha_hora inválido. Use 'YYYY-MM-DD HH:MM' o 'YYYY-MM-DD HH:MM:SS'.")
+            # Permisos: solo Administrador puede eliminar turnos
+            rol = UsuarioDAO().obtener_rol(usuario_actual)
+            if rol != "Administrador":
+                print("Permiso denegado: solo Administrador puede eliminar turnos.")
+                return False
             return False
 
         fin = inicio + timedelta(minutes=30)

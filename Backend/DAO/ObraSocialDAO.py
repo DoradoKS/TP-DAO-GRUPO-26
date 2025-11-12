@@ -3,13 +3,19 @@ import sqlite3
 
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.ObraSocial import ObraSocial # Importa el modelo que acabamos de crear
+from Backend.DAO.UsuarioDAO import UsuarioDAO
 
 class ObraSocialDAO:
     """
     DAO para la entidad ObraSocial.
     Por ahora, solo implementamos la lectura de datos.
     """
-    def cargar_obra_social(self, obra_social):
+    def cargar_obra_social(self, obra_social, usuario_actual):
+        # Permisos: solo Administrador puede crear
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede crear obras sociales.")
+            return None
         """
         Inserta un nuevo objeto ObraSocial en la base de datos.
         """
@@ -41,7 +47,12 @@ class ObraSocialDAO:
             if conn:
                 conn.close()
 
-    def eliminar_obra_social(self, id_obra_social):
+    def eliminar_obra_social(self, id_obra_social, usuario_actual):
+        # Permisos: solo Administrador puede eliminar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede eliminar obras sociales.")
+            return False
         """
         Elimina una ObraSocial de la base de datos por su ID.
         """

@@ -2,6 +2,7 @@ import sqlite3
 
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Especialidad import Especialidad
+from Backend.DAO.UsuarioDAO import UsuarioDAO
 
 class EspecialidadDAO:
     """
@@ -9,7 +10,12 @@ class EspecialidadDAO:
     Gestiona las operaciones CRUD en la tabla Especialidad.
     """
 
-    def crear_especialidad(self, especialidad):
+    def crear_especialidad(self, especialidad, usuario_actual):
+        # Permisos: solo Administrador puede crear
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede crear especialidades.")
+            return None
         """
         Inserta un nuevo objeto Especialidad en la base de datos.
         """
@@ -102,7 +108,12 @@ class EspecialidadDAO:
             if conn:
                 conn.close()
 
-    def actualizar_especialidad(self, especialidad):    
+    def actualizar_especialidad(self, especialidad, usuario_actual):    
+        # Permisos: solo Administrador puede actualizar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede actualizar especialidades.")
+            return False
         """
         Actualiza una especialidad existente en la base de datos.
         """
@@ -136,7 +147,12 @@ class EspecialidadDAO:
             if conn:
                 conn.close()
 
-    def eliminar_especialidad(self, id_especialidad):
+    def eliminar_especialidad(self, id_especialidad, usuario_actual):
+        # Permisos: solo Administrador puede eliminar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede eliminar especialidades.")
+            return False
         """
         Elimina una especialidad de la base de datos usando su ID.
         """

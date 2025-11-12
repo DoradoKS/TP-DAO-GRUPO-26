@@ -2,6 +2,7 @@ import sqlite3
 
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Consultorio import Consultorio  # Asegúrate de que el archivo se llame Consultorio.py
+from Backend.DAO.UsuarioDAO import UsuarioDAO
 
 class ConsultorioDAO:   
     """
@@ -9,7 +10,12 @@ class ConsultorioDAO:
     Gestiona las operaciones CRUD en la tabla Consultorio.
     """
 
-    def crear_consultorio(self, consultorio):
+    def crear_consultorio(self, consultorio, usuario_actual):
+        # Permisos: solo Administrador puede crear
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede crear consultorios.")
+            return None
         """
         Inserta un nuevo objeto Consultorio en la base de datos.
         """
@@ -73,7 +79,12 @@ class ConsultorioDAO:
             if conn:
                 conn.close()
 
-    def actualizar_consultorio(self, consultorio):
+    def actualizar_consultorio(self, consultorio, usuario_actual):
+        # Permisos: solo Administrador puede actualizar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede actualizar consultorios.")
+            return False
         """
         Actualiza un objeto Consultorio existente en la base de datos.
         """
@@ -107,7 +118,12 @@ class ConsultorioDAO:
             if conn:
                 conn.close()
 
-    def eliminar_consultorio(self, id_consultorio):
+    def eliminar_consultorio(self, id_consultorio, usuario_actual):
+        # Permisos: solo Administrador puede eliminar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado: solo Administrador puede eliminar consultorios.")
+            return False
         """
         Elimina un consultorio de la base de datos usando su ID.
         """
