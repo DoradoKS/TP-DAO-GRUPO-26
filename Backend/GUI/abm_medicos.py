@@ -120,11 +120,17 @@ class GestionMedicos(tk.Toplevel):
         item = self.tree.item(selected_item[0])
         id_medico = item["values"][0]
         
+        # Obtener el médico original para preservar el usuario
+        medico_original = MedicoDAO().obtener_medico_por_id(id_medico)
+        if not medico_original:
+            messagebox.showerror("Error", "No se pudo obtener el médico.")
+            return
+        
         id_especialidad = next((e.id_especialidad for e in self.especialidades if e.nombre == self.especialidad_combo.get()), None)
 
         medico = Medico(
             id_medico=id_medico,
-            usuario=f"{self.entries['Nombre:'].get().lower()}.{self.entries['Apellido:'].get().lower()}",
+            usuario=medico_original.usuario,  # Mantener el usuario original (FK a tabla Usuario)
             nombre=self.entries["Nombre:"].get(),
             apellido=self.entries["Apellido:"].get(),
             matricula=self.entries["Matrícula:"].get(),
@@ -133,8 +139,8 @@ class GestionMedicos(tk.Toplevel):
             email=self.entries["Email:"].get(),
             telefono=self.entries["Teléfono:"].get(),
             id_especialidad=id_especialidad,
-            calle="Default",
-            numero_calle=123
+            calle=medico_original.calle if medico_original.calle else "Default",
+            numero_calle=medico_original.numero_calle if medico_original.numero_calle else 123
         )
         
         exito, mensaje = MedicoDAO().actualizar_medico(medico, self.usuario)

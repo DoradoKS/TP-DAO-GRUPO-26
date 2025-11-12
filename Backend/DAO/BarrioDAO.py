@@ -19,12 +19,12 @@ class BarrioDAO:
 
             sql = """
             INSERT INTO Barrio (
-                nombre, codigo_postal
-            ) VALUES (?, ?)
+                nombre
+            ) VALUES (?)
             """
             
             valores = (
-                barrio.nombre, barrio.codigo_postal
+                barrio.nombre,
             )
 
             cursor.execute(sql, valores)
@@ -58,8 +58,7 @@ class BarrioDAO:
             for fila in filas:
                 barrio = Barrio(
                     id_barrio=fila[0],
-                    nombre=fila[1],
-                    codigo_postal=fila[2]
+                    nombre=fila[1]
                 )
                 barrios.append(barrio)
 
@@ -88,8 +87,7 @@ class BarrioDAO:
             if fila:
                 barrio = Barrio(
                     id_barrio=fila[0],
-                    nombre=fila[1],
-                    codigo_postal=fila[2]
+                    nombre=fila[1]
                 )
                 return barrio
             else:
@@ -113,13 +111,12 @@ class BarrioDAO:
 
             sql = """
             UPDATE Barrio
-            SET nombre = ?, codigo_postal = ?
+            SET nombre = ?
             WHERE id_barrio = ?
             """
             
             valores = (
                 barrio.nombre,
-                barrio.codigo_postal,
                 barrio.id_barrio
             )
 

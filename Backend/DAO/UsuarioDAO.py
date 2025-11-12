@@ -3,33 +3,32 @@ from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Usuario import Usuario
 
 class UsuarioDAO:
-    """
-    DAO para la entidad Usuario. Gestiona autenticación y permisos.
-    """
-    def crear_usuario(self, usuario):
-        """
-        Inserta un nuevo usuario en la base de datos.
-        """
+    def crear_usuario(self, usuario, contrasena, rol):
         conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-            sql = """
-            INSERT INTO Usuario (usuario, contrasenia, rol)
-            VALUES (?, ?, ?)
-            """
-            valores = (usuario.usuario, usuario.contrasenia, usuario.rol)
-            cursor.execute(sql, valores)
+            cursor.execute("""
+                INSERT INTO Usuario (usuario, contrasenia, rol)
+                VALUES (?, ?, ?)
+            """, (usuario, contrasena, rol))
             conn.commit()
-            return cursor.lastrowid
+            return True, "Usuario creado correctamente."
+        except sqlite3.IntegrityError:
+            return False, "El nombre de usuario ya está registrado."
         except sqlite3.Error as e:
-            if conn:
-                conn.rollback()
-            print(f"Error al crear usuario: {e}")
-            return None
+            if conn: conn.rollback()
+            return False, f"Error de base de datos: {e}"
         finally:
-            if conn:
-                conn.close()
+            if conn: conn.close()
+
+    def obtener_rol(self, usuario):
+        conn = get_conexion()
+        cursor = conn.cursor()
+        cursor.execute("SELECT rol FROM Usuario WHERE usuario = ?", (usuario,))
+        fila = cursor.fetchone()
+        conn.close()
+        return fila[0] if fila else None
 
     def obtener_usuario(self, usuario):
         """

@@ -74,6 +74,20 @@ class MedicoDAO:
         try:
             conn = get_conexion()
             cursor = conn.cursor()
+            
+            # Verificar unicidad de DNI, matrícula y usuario (excluyendo el registro actual)
+            cursor.execute("SELECT id_medico FROM Medico WHERE dni = ? AND id_medico != ?", (medico.dni, medico.id_medico))
+            if cursor.fetchone():
+                return False, "Error: El DNI ya pertenece a otro médico."
+            
+            cursor.execute("SELECT id_medico FROM Medico WHERE matricula = ? AND id_medico != ?", (medico.matricula, medico.id_medico))
+            if cursor.fetchone():
+                return False, "Error: La matrícula ya pertenece a otro médico."
+            
+            cursor.execute("SELECT id_medico FROM Medico WHERE usuario = ? AND id_medico != ?", (medico.usuario, medico.id_medico))
+            if cursor.fetchone():
+                return False, "Error: El nombre de usuario ya está en uso por otro médico."
+            
             sql = """
             UPDATE Medico SET usuario = ?, matricula = ?, nombre = ?, apellido = ?, tipo_dni = ?, 
                                dni = ?, calle = ?, numero_calle = ?, email = ?, telefono = ?, 
@@ -88,8 +102,8 @@ class MedicoDAO:
             cursor.execute(sql, valores)
             conn.commit()
             return True, "Médico actualizado exitosamente."
-        except sqlite3.IntegrityError:
-            return False, "Error: El DNI, matrícula o usuario ya existen en otro registro."
+        except sqlite3.IntegrityError as e:
+            return False, f"Error de integridad: {e}"
         except sqlite3.Error as e:
             if conn: conn.rollback()
             return False, f"Error de base de datos: {e}"

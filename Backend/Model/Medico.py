@@ -1,9 +1,9 @@
 # En Model/Medico.py
 
 class Medico:
-    def __init__(self, id_medico, usuario, matricula, nombre, apellido, 
-                 tipo_dni, dni, calle, numero_calle, email, telefono, 
-                 id_especialidad):
+    def __init__(self, id_medico=None, usuario=None, matricula=None, nombre=None, apellido=None, 
+                 tipo_dni=None, dni=None, calle=None, numero_calle=None, email=None, telefono=None, 
+                 id_especialidad=None):
         
         # Campos de la tabla
         self.id_medico = id_medico

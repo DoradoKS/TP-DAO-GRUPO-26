@@ -7,6 +7,7 @@ from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.Model.Turno import Turno
 from Backend.Validaciones.validaciones_turnos import validar_fecha, validar_hora
+from datetime import datetime, timedelta
 
 class ABMTurnos(tk.Toplevel):
     def __init__(self, parent, rol, usuario):
@@ -40,10 +41,23 @@ class ABMTurnos(tk.Toplevel):
         ttk.Label(form_frame, text="Fecha (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=5, sticky="e")
         self.fecha_entry = ttk.Entry(form_frame)
         self.fecha_entry.grid(row=3, column=1, padx=5, pady=5, sticky="w")
+        # Botón para mostrar horarios disponibles según médico y fecha
+        self.mostrar_horarios_btn = ttk.Button(form_frame, text="Mostrar horarios disponibles", command=self.mostrar_horarios_disponibles)
+        self.mostrar_horarios_btn.grid(row=3, column=2, padx=5, pady=5, sticky="w")
 
         ttk.Label(form_frame, text="Hora (HH:MM):").grid(row=4, column=0, padx=5, pady=5, sticky="e")
         self.hora_entry = ttk.Entry(form_frame)
         self.hora_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
+
+        # Lista de horarios disponibles
+        horarios_frame = ttk.Frame(self)
+        horarios_frame.pack(padx=10, pady=5, fill="x")
+        ttk.Label(horarios_frame, text="Horarios disponibles:").pack(anchor="w")
+        self.slots_listbox = tk.Listbox(horarios_frame, height=8)
+        self.slots_listbox.pack(side="left", fill="x", expand=True, padx=(0,5))
+        scrollbar = ttk.Scrollbar(horarios_frame, orient="vertical", command=self.slots_listbox.yview)
+        scrollbar.pack(side="left", fill="y")
+        self.slots_listbox.config(yscrollcommand=scrollbar.set)
 
         button_frame = ttk.Frame(self)
         button_frame.pack(padx=10, pady=10, fill="x")
@@ -162,14 +176,28 @@ class ABMTurnos(tk.Toplevel):
                     id_medico = m.id_medico
                     break
         
-        fecha_hora = f"{fecha} {hora}:00"
+        # Si hay una selección en la lista de horarios, usarla; si no, usar la hora ingresada
+        selected_indices = self.slots_listbox.curselection()
+        if selected_indices:
+            hora_seleccionada = self.slots_listbox.get(selected_indices[0])
+        else:
+            hora_seleccionada = hora
+
+        if not validar_hora(hora_seleccionada):
+            messagebox.showerror("Error de formato", "La hora debe tener el formato HH:MM.")
+            return
+
+        fecha_hora = f"{fecha} {hora_seleccionada}:00"
 
         turno = Turno(id_paciente=id_paciente, id_medico=id_medico, fecha_hora=fecha_hora)
         
         turno_dao = TurnoDAO()
         if turno_dao.crear_turno(turno, self.usuario):
             messagebox.showinfo("Turno solicitado", "El turno ha sido solicitado exitosamente.")
+            # refrescar lista de turnos y horarios
             self.cargar_turnos()
+            # actualizar horarios disponibles para la misma fecha
+            self.mostrar_horarios_disponibles()
         else:
             messagebox.showerror("Error", "No se pudo solicitar el turno. Verifique la consola para más detalles.")
 
@@ -188,5 +216,79 @@ class ABMTurnos(tk.Toplevel):
             if turno_dao.eliminar_turno(id_turno, self.usuario):
                 messagebox.showinfo("Turno cancelado", "El turno ha sido cancelado exitosamente.")
                 self.cargar_turnos()
+                # actualizar horarios disponibles si estaban visibles
+                self.mostrar_horarios_disponibles()
             else:
                 messagebox.showerror("Error", "No se pudo cancelar el turno.")
+
+    def generar_franjas(self):
+        """Genera las franjas horarias de 30 minutos entre 08:00 y 14:00 inclusive."""
+        franjas = []
+        inicio = datetime.strptime("08:00", "%H:%M")
+        fin = datetime.strptime("14:00", "%H:%M")
+        actual = inicio
+        while actual <= fin:
+            franjas.append(actual.strftime("%H:%M"))
+            actual += timedelta(minutes=30)
+        return franjas
+
+    def mostrar_horarios_disponibles(self):
+        fecha = self.fecha_entry.get()
+        medico_nombre_completo = self.medico_combo.get()
+
+        if not fecha:
+            messagebox.showwarning("Advertencia", "Ingrese una fecha primero.")
+            return
+
+        if not validar_fecha(fecha):
+            messagebox.showerror("Error de formato", "La fecha debe tener el formato YYYY-MM-DD.")
+            return
+
+        # validar día hábil (lunes=0, domingo=6)
+        try:
+            fecha_obj = datetime.strptime(fecha, "%Y-%m-%d").date()
+        except ValueError:
+            messagebox.showerror("Error de fecha", "Fecha inválida.")
+            return
+
+        if fecha_obj.weekday() >= 5:
+            messagebox.showwarning("Día no hábil", "Seleccione un día entre lunes y viernes.")
+            return
+
+        # validar límite de 1 mes (30 días)
+        hoy = datetime.today().date()
+        max_fecha = hoy + timedelta(days=30)
+        if fecha_obj < hoy or fecha_obj > max_fecha:
+            messagebox.showwarning("Rango de fechas", f"Se pueden sacar turnos sólo entre {hoy} y {max_fecha}.")
+            return
+
+        # obtener id_medico seleccionado
+        id_medico = None
+        if hasattr(self, 'medicos'):
+            for m in self.medicos:
+                if f"{m.nombre} {m.apellido}" == medico_nombre_completo:
+                    id_medico = m.id_medico
+                    break
+
+        if not id_medico:
+            messagebox.showwarning("Advertencia", "Seleccione un médico para ver horarios.")
+            return
+
+        # obtener turnos ya ocupados para ese médico y fecha
+        turno_dao = TurnoDAO()
+        ocupados = turno_dao.obtener_turnos_por_medico_y_fecha(id_medico, fecha)
+        horas_ocupadas = set()
+        for t in ocupados:
+            try:
+                h = t.fecha_hora.split(" ")[1][:5]
+                horas_ocupadas.add(h)
+            except Exception:
+                continue
+
+        franjas = self.generar_franjas()
+        disponibles = [f for f in franjas if f not in horas_ocupadas]
+
+        # poblar listbox
+        self.slots_listbox.delete(0, tk.END)
+        for h in disponibles:
+            self.slots_listbox.insert(tk.END, h)
