@@ -3,16 +3,22 @@ import sqlite3
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Receta import Receta
 from Backend.Validaciones.validaciones import Validaciones
+from Backend.DAO.UsuarioDAO import UsuarioDAO
 
 class RecetaDAO:
     """
     Gestiona las operaciones CRUD en la tabla Receta.
     """
 
-    def crear_receta(self, receta):
+    def crear_receta(self, receta, usuario_actual):
         """
         Inserta un nuevo objeto Receta en la base de datos.
         """
+        # Permisos: solo Medico o Administrador pueden crear recetas
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol not in ["Medico", "Administrador"]:
+            print("Permiso denegado: solo Medico o Administrador pueden crear recetas.")
+            return None
         # Validaciones previas
         datos = {
             'id_paciente': receta.id_paciente,
@@ -153,10 +159,36 @@ class RecetaDAO:
             if conn:
                 conn.close()
 
-    def actualizar_receta(self, receta):
+    def actualizar_receta(self, receta, usuario_actual):
         """
         Actualiza los detalles de una receta existente.
         """
+        # Permisos: solo el propio Medico (autor de la receta) o Administrador pueden actualizar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        # Obtener usuario del medico que emitió la receta
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id_medico FROM Receta WHERE id_receta = ?", (receta.id_receta,))
+            fila = cursor.fetchone()
+            id_medico_receta = fila[0] if fila else None
+            # Obtener usuario del medico
+            if id_medico_receta:
+                cursor.execute("SELECT usuario FROM Medico WHERE id_medico = ?", (id_medico_receta,))
+                fila_medico = cursor.fetchone()
+                usuario_medico = fila_medico[0] if fila_medico else None
+            else:
+                usuario_medico = None
+        finally:
+            if conn:
+                conn.close()
+        if rol == "Medico" and usuario_actual != usuario_medico:
+            print("Permiso denegado: solo el propio médico que emitió la receta puede actualizarla.")
+            return False
+        if rol not in ["Medico", "Administrador"]:
+            print("Permiso denegado: solo Medico o Administrador pueden actualizar recetas.")
+            return False
         # Validaciones previas
         datos = {
             'id_paciente': receta.id_paciente,
@@ -321,6 +353,39 @@ class RecetaDAO:
 
         except sqlite3.Error as e:
             print(f"Error al obtener las recetas del médico: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    def obtener_recetas_por_fecha(self, fecha):
+        """
+        Retorna una lista de recetas emitidas en una fecha específica.
+        """
+        conn = None
+        recetas = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "SELECT * FROM Receta WHERE DATE(fecha_emision) = DATE(?)"
+            cursor.execute(sql, (fecha,))
+            filas = cursor.fetchall()
+
+            for fila in filas:
+                receta = Receta(
+                    id_receta=fila[0],
+                    id_paciente=fila[1],
+                    id_medico=fila[2],
+                    fecha_emision=fila[3],
+                    detalles=fila[4]
+                )
+                recetas.append(receta)
+
+            return recetas
+
+        except sqlite3.Error as e:
+            print(f"Error al obtener las recetas por fecha: {e}")
             return []
         finally:
             if conn:

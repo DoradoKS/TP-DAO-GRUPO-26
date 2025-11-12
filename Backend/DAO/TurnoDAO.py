@@ -582,4 +582,28 @@ class TurnoDAO:
             if conn:
                 conn.close()
 
+    def actualizar_estado_turno(self, id_turno, nuevo_estado):
+        """
+        Actualiza el estado de un turno dado su ID.
+        """
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "UPDATE Turno SET estado = ? WHERE id_turno = ?"
+            cursor.execute(sql, (nuevo_estado, id_turno))
+            conn.commit()
+            print("Estado del turno actualizado exitosamente.")
+            return True
+
+        except sqlite3.Error as e:
+            if conn:
+                conn.rollback()
+            print(f"Error al actualizar el estado del turno: {e}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+
     

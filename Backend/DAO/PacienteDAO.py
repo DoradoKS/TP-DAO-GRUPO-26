@@ -3,6 +3,8 @@ from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Paciente import Paciente
 from Backend.Validaciones.validaciones import Validaciones
 
+from Backend.DAO.UsuarioDAO import UsuarioDAO
+
 class PacienteDAO:
     """
     DAO (Data Access Object) para la entidad Paciente.
@@ -10,11 +12,16 @@ class PacienteDAO:
     en la tabla Paciente de la base de datos.
     """
 
-    def crear_paciente(self, paciente):
+    def crear_paciente(self, paciente, usuario_actual):
         """
         Recibe un objeto de tipo Paciente y lo inserta en la DB.
         Retorna el ID del nuevo paciente o None si falla.
         """
+        # Permisos: solo Paciente o Administrador pueden crear
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol not in ["Paciente", "Administrador"]:
+            print("Permiso denegado: solo Paciente o Administrador pueden crear pacientes.")
+            return None
         # Validaciones previas
         datos = {
             'usuario': paciente.usuario,
@@ -146,11 +153,19 @@ class PacienteDAO:
             if conn:
                 conn.close()
 
-    def actualizar_paciente(self, paciente):
+    def actualizar_paciente(self, paciente, usuario_actual):
         """
         Recibe un objeto Paciente con datos actualizados
         y los aplica en la base de datos (busca por id_paciente).
         """
+        # Permisos: solo el propio Paciente o Administrador pueden actualizar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol == "Paciente" and usuario_actual != paciente.usuario:
+            print("Permiso denegado: solo el propio paciente puede actualizar sus datos.")
+            return False
+        if rol not in ["Paciente", "Administrador"]:
+            print("Permiso denegado: solo Paciente o Administrador pueden actualizar pacientes.")
+            return False
         # Validaciones previas (excluir el propio registro en la verificación de unicidad)
         datos = {
             'usuario': paciente.usuario,
@@ -205,35 +220,118 @@ class PacienteDAO:
             if conn:
                 conn.close()
 
-    def eliminar_paciente(self, id_paciente):
+    def eliminar_paciente(self, id_paciente, usuario_actual):
         """
         Elimina un paciente de la base de datos usando su ID.
         """
         conn = None
+        # Permisos: solo el propio Paciente o Administrador pueden eliminar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        # Obtener usuario del paciente
+        conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-
+            cursor.execute("SELECT usuario FROM Paciente WHERE id_paciente = ?", (id_paciente,))
+            fila = cursor.fetchone()
+            usuario_paciente = fila[0] if fila else None
+            if rol == "Paciente" and usuario_actual != usuario_paciente:
+                print("Permiso denegado: solo el propio paciente puede eliminar su registro.")
+                return False
+            if rol not in ["Paciente", "Administrador"]:
+                print("Permiso denegado: solo Paciente o Administrador pueden eliminar pacientes.")
+                return False
             sql = "DELETE FROM Paciente WHERE id_paciente = ?"
-            
             cursor.execute(sql, (id_paciente,))
             conn.commit()
-
-            # Opcional: verificar cuántas filas se eliminaron
             if cursor.rowcount > 0:
                 print(f"Paciente con ID {id_paciente} eliminado exitosamente.")
                 return True
             else:
                 print(f"No se encontró paciente con ID {id_paciente}.")
                 return False
-
         except sqlite3.Error as e:
             if conn:
                 conn.rollback()
-            # Un error común aquí es si el paciente tiene turnos asignados
-            # (Fallo de Foreign Key). ¡Esto es BUENO, es una validación!
             print(f"Error al eliminar el paciente (puede tener datos asociados): {e}")
             return False
+        finally:
+            if conn:
+                conn.close()
+
+    def buscar_paciente_por_apellido(self, apellido):
+        """
+        Busca pacientes cuyo apellido coincida parcialmente con el proporcionado.
+        Retorna una lista de objetos Paciente.
+        """
+        conn = None
+        pacientes = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "SELECT * FROM Paciente WHERE apellido LIKE ?"
+            patron_busqueda = f"%{apellido}%" # Para búsqueda parcial
+            cursor.execute(sql, (patron_busqueda,))
+
+            filas = cursor.fetchall()
+            for fila in filas:
+                p = Paciente(
+                    id_paciente=fila[0],
+                    id_barrio=fila[1],
+                    usuario=fila[2],
+                    nombre=fila[3],
+                    apellido=fila[4],
+                    fecha_nacimiento=fila[5],
+                    tipo_dni=fila[6],
+                    dni=fila[7],
+                    email=fila[8],
+                    telefono=fila[9],
+                    id_obra_social=fila[10],
+                    calle=fila[11],
+                    numero_calle=fila[12]
+                )
+                pacientes.append(p)
+            
+            return pacientes
+
+        except sqlite3.Error as e:
+            print(f"Error al buscar pacientes por apellido: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    def buscar_paciente_por_id_paciente(self, id_paciente):
+        """
+        Busca un paciente por su ID y retorna un objeto Paciente.
+        Retorna None si no lo encuentra.
+        """
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "SELECT * FROM Paciente WHERE id_paciente = ?"
+            cursor.execute(sql, (id_paciente,))
+            
+            fila = cursor.fetchone()
+
+            if fila:
+                p = Paciente(
+                    id_paciente=fila[0], id_barrio=fila[1], usuario=fila[2],
+                    nombre=fila[3], apellido=fila[4], fecha_nacimiento=fila[5],
+                    tipo_dni=fila[6], dni=fila[7], email=fila[8],
+                    telefono=fila[9], id_obra_social=fila[10],
+                    calle=fila[11], numero_calle=fila[12]
+                )
+                return p
+            else:
+                return None
+
+        except sqlite3.Error as e:
+            print(f"Error al obtener paciente por ID: {e}")
+            return None
         finally:
             if conn:
                 conn.close()

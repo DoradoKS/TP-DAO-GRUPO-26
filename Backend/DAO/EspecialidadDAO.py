@@ -165,3 +165,38 @@ class EspecialidadDAO:
         finally:
             if conn:
                 conn.close()
+
+    def buscar_especialidad_por_nombre(self, nombre):
+        """
+        Busca especialidades cuyo nombre coincida parcialmente con el proporcionado.
+        Retorna una lista de objetos Especialidad.
+        """
+        conn = None
+        especialidades = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "SELECT * FROM Especialidad WHERE nombre LIKE ?"
+            patron_busqueda = f"%{nombre}%"
+            cursor.execute(sql, (patron_busqueda,))
+            filas = cursor.fetchall()
+
+            for fila in filas:
+                especialidad = Especialidad(
+                    id_especialidad=fila[0],
+                    nombre=fila[1],
+                    descripcion=fila[2]
+                )
+                especialidades.append(especialidad)
+
+            return especialidades
+
+        except sqlite3.Error as e:
+            print(f"Error al buscar especialidades por nombre: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    

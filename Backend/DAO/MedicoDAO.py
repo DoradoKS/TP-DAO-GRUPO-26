@@ -5,16 +5,23 @@ from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Medico import Medico # Asegúrate de que el archivo se llame Medico.py
 from Backend.Validaciones.validaciones import Validaciones
 
+from Backend.DAO.UsuarioDAO import UsuarioDAO
+
 class MedicoDAO:
     """
     DAO para la entidad Medico.
     Gestiona las operaciones CRUD en la tabla Medico.
     """
 
-    def crear_medico(self, medico):
+    def crear_medico(self, medico, usuario_actual):
         """
         Inserta un nuevo objeto Medico en la base de datos.
         """
+        # Permisos: solo Medico o Administrador pueden crear
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol not in ["Medico", "Administrador"]:
+            print("Permiso denegado: solo Medico o Administrador pueden crear médicos.")
+            return None
         # Validaciones previas
         datos = {
             'usuario': medico.usuario,
@@ -133,10 +140,18 @@ class MedicoDAO:
             if conn:
                 conn.close()
 
-    def actualizar_medico(self, medico):
+    def actualizar_medico(self, medico, usuario_actual):
         """
         Actualiza los datos de un médico en la DB, buscando por id_medico.
         """
+        # Permisos: solo el propio Medico o Administrador pueden actualizar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol == "Medico" and usuario_actual != medico.usuario:
+            print("Permiso denegado: solo el propio médico puede actualizar sus datos.")
+            return False
+        if rol not in ["Medico", "Administrador"]:
+            print("Permiso denegado: solo Medico o Administrador pueden actualizar médicos.")
+            return False
         # Validaciones previas (excluir el propio registro en la verificación de unicidad)
         datos = {
             'usuario': medico.usuario,
@@ -191,33 +206,106 @@ class MedicoDAO:
             if conn:
                 conn.close()
 
-    def eliminar_medico(self, id_medico):
+    def eliminar_medico(self, id_medico, usuario_actual):
         """
         Elimina un médico de la base de datos usando su ID.
         """
         conn = None
+        # Permisos: solo el propio Medico o Administrador pueden eliminar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        # Obtener usuario del medico
+        conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-
+            cursor.execute("SELECT usuario FROM Medico WHERE id_medico = ?", (id_medico,))
+            fila = cursor.fetchone()
+            usuario_medico = fila[0] if fila else None
+            if rol == "Medico" and usuario_actual != usuario_medico:
+                print("Permiso denegado: solo el propio médico puede eliminar su registro.")
+                return False
+            if rol not in ["Medico", "Administrador"]:
+                print("Permiso denegado: solo Medico o Administrador pueden eliminar médicos.")
+                return False
             sql = "DELETE FROM Medico WHERE id_medico = ?"
-            
             cursor.execute(sql, (id_medico,))
             conn.commit()
-
             if cursor.rowcount > 0:
                 print(f"Medico con ID {id_medico} eliminado exitosamente.")
                 return True
             else:
                 print(f"No se encontró médico con ID {id_medico}.")
                 return False
-
         except sqlite3.Error as e:
             if conn:
                 conn.rollback()
-            # Esto fallará si el médico tiene turnos asignados (¡bien!)
             print(f"Error al eliminar el médico (puede tener turnos): {e}")
             return False
+        finally:
+            if conn:
+                conn.close()
+
+    def buscar_medico_por_apellido(self, apellido):
+        """
+        Busca médicos por su apellido.
+        Retorna una lista de objetos Medico.
+        """
+        conn = None
+        medicos = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "SELECT * FROM Medico WHERE apellido LIKE ?"
+            cursor.execute(sql, (f"%{apellido}%",))
+            filas = cursor.fetchall()
+
+            for fila in filas:
+                m = Medico(
+                    id_medico=fila[0], usuario=fila[1], matricula=fila[2],
+                    nombre=fila[3], apellido=fila[4], tipo_dni=fila[5],
+                    dni=fila[6], calle=fila[7], numero_calle=fila[8],
+                    email=fila[9], telefono=fila[10], id_especialidad=fila[11]
+                )
+                medicos.append(m)
+            
+            return medicos
+
+        except sqlite3.Error as e:
+            print(f"Error al buscar médicos por apellido: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    def obtener_medicos_por_especialidad(self, id_especialidad):
+        """
+        Retorna una lista de médicos que pertenecen a una especialidad específica.
+        """
+        conn = None
+        medicos = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            sql = "SELECT * FROM Medico WHERE id_especialidad = ?"
+            cursor.execute(sql, (id_especialidad,))
+            filas = cursor.fetchall()
+
+            for fila in filas:
+                m = Medico(
+                    id_medico=fila[0], usuario=fila[1], matricula=fila[2],
+                    nombre=fila[3], apellido=fila[4], tipo_dni=fila[5],
+                    dni=fila[6], calle=fila[7], numero_calle=fila[8],
+                    email=fila[9], telefono=fila[10], id_especialidad=fila[11]
+                )
+                medicos.append(m)
+
+            return medicos
+
+        except sqlite3.Error as e:
+            print(f"Error al obtener los médicos por especialidad: {e}")
+            return []
         finally:
             if conn:
                 conn.close()
