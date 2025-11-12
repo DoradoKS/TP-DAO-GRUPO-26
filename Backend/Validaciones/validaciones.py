@@ -40,7 +40,7 @@ class Validaciones:
                 val = obj_dict[campo]
                 if val is None or (isinstance(val, str) and val.strip() == ""):
                     errores.append(f"El campo {campo} no puede estar vacío.")
-        return (len(errores) == 0, errores)
+        return len(errores) == 0, errores
 
     # ---------- DNI ----------
     @staticmethod
@@ -221,7 +221,7 @@ class Validaciones:
             if not es:
                 errores.append(msg)
 
-        return (len(errores) == 0, errores)
+        return len(errores) == 0, errores
 
     @staticmethod
     def validar_medico_completo(medico_dict, id_medico_actual=None):
@@ -272,7 +272,7 @@ class Validaciones:
             if not es:
                 errores.append(msg)
 
-        return (len(errores) == 0, errores)
+        return len(errores) == 0, errores
 
     @staticmethod
     def validar_receta_completa(receta_dict):
@@ -287,7 +287,7 @@ class Validaciones:
             if not es:
                 errores.append(msg)
 
-        return (len(errores) == 0, errores)
+        return len(errores) == 0, errores
 
 
 if __name__ == '__main__':

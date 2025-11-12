@@ -1,5 +1,4 @@
-import sqlite3      
-
+import sqlite3
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Especialidad import Especialidad
 from Backend.DAO.UsuarioDAO import UsuarioDAO
@@ -10,97 +9,104 @@ class EspecialidadDAO:
     Gestiona las operaciones CRUD en la tabla Especialidad.
     """
 
-    def crear_especialidad(self, especialidad, usuario_actual):
-        # Permisos: solo Administrador puede crear
-        rol = UsuarioDAO().obtener_rol(usuario_actual)
-        if rol != "Administrador":
-            print("Permiso denegado: solo Administrador puede crear especialidades.")
-            return None
-        """
-        Inserta un nuevo objeto Especialidad en la base de datos.
-        """
+    def buscar_por_nombre_exacto(self, nombre):
+        """Busca una especialidad por su nombre exacto (case-insensitive)."""
         conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-
-            sql = """
-            INSERT INTO Especialidad (nombre, descripcion) 
-            VALUES (?, ?)
-            """
-            
-            valores = (
-                especialidad.nombre, especialidad.descripcion
-            )
-
-            cursor.execute(sql, valores)
-            conn.commit()
-            print("Especialidad creada exitosamente.")
-            return cursor.lastrowid # Retorna el ID de la nueva especialidad
-
+            sql = "SELECT * FROM Especialidad WHERE nombre = ?"
+            cursor.execute(sql, (nombre,))
+            fila = cursor.fetchone()
+            if fila:
+                return Especialidad(id_especialidad=fila[0], nombre=fila[1], descripcion=fila[2])
+            return None
         except sqlite3.Error as e:
-            if conn:
-                conn.rollback()
-            print(f"Error al crear la especialidad: {e}")
+            print(f"Error al buscar especialidad por nombre: {e}")
             return None
         finally:
             if conn:
                 conn.close()
 
-    def obtener_todas_las_especialidades(self):
-        """
-        Retorna una lista de todas las especialidades como objetos Especialidad.
-        """
+    def crear_especialidad(self, especialidad, usuario_actual):
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            print("Permiso denegado.")
+            return None, "Permiso denegado."
+
+        if self.buscar_por_nombre_exacto(especialidad.nombre):
+            return None, "Especialidad ya existente."
+
         conn = None
-        especialidades = []
         try:
             conn = get_conexion()
             cursor = conn.cursor()
+            sql = "INSERT INTO Especialidad (nombre, descripcion) VALUES (?, ?)"
+            valores = (especialidad.nombre, especialidad.descripcion)
+            cursor.execute(sql, valores)
+            conn.commit()
+            return cursor.lastrowid, "Especialidad creada exitosamente."
+        except sqlite3.Error as e:
+            if conn:
+                conn.rollback()
+            print(f"Error al crear la especialidad: {e}")
+            return None, f"Error de base de datos: {e}"
+        finally:
+            if conn:
+                conn.close()
 
-            sql = "SELECT * FROM Especialidad"
-            cursor.execute(sql)
+    def actualizar_especialidad(self, especialidad, usuario_actual):
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            return False, "Permiso denegado."
+
+        existente = self.buscar_por_nombre_exacto(especialidad.nombre)
+        if existente and existente.id_especialidad != especialidad.id_especialidad:
+            return False, "Ya existe otra especialidad con ese nombre."
+
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = "UPDATE Especialidad SET nombre = ?, descripcion = ? WHERE id_especialidad = ?"
+            valores = (especialidad.nombre, especialidad.descripcion, especialidad.id_especialidad)
+            cursor.execute(sql, valores)
+            conn.commit()
+            return True, "Especialidad actualizada exitosamente."
+        except sqlite3.Error as e:
+            if conn:
+                conn.rollback()
+            print(f"Error al actualizar la especialidad: {e}")
+            return False, f"Error de base de datos: {e}"
+        finally:
+            if conn:
+                conn.close()
+
+    def obtener_todas_las_especialidades(self):
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Especialidad ORDER BY nombre")
             filas = cursor.fetchall()
-
-            for fila in filas:
-                especialidad = Especialidad(
-                    id_especialidad=fila[0],
-                    nombre=fila[1],
-                    descripcion=fila[2]
-                )
-                especialidades.append(especialidad)
-
-            return especialidades
-
+            return [Especialidad(id_especialidad=f[0], nombre=f[1], descripcion=f[2]) for f in filas]
         except sqlite3.Error as e:
             print(f"Error al obtener las especialidades: {e}")
             return []
         finally:
             if conn:
-                conn.close()    
+                conn.close()
 
     def obtener_especialidad_por_id(self, id_especialidad):
-        """
-        Retorna un objeto Especialidad dado su ID.
-        """
         conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-
-            sql = "SELECT * FROM Especialidad WHERE id_especialidad = ?"
-            cursor.execute(sql, (id_especialidad,))
+            cursor.execute("SELECT * FROM Especialidad WHERE id_especialidad = ?", (id_especialidad,))
             fila = cursor.fetchone()
-
             if fila:
-                especialidad = Especialidad(
-                    id_especialidad=fila[0],
-                    nombre=fila[1],
-                    descripcion=fila[2]
-                )
-                return especialidad
-            else:
-                return None
-
+                return Especialidad(id_especialidad=fila[0], nombre=fila[1], descripcion=fila[2])
+            return None
         except sqlite3.Error as e:
             print(f"Error al obtener la especialidad por ID: {e}")
             return None
@@ -108,111 +114,29 @@ class EspecialidadDAO:
             if conn:
                 conn.close()
 
-    def actualizar_especialidad(self, especialidad, usuario_actual):    
-        # Permisos: solo Administrador puede actualizar
-        rol = UsuarioDAO().obtener_rol(usuario_actual)
-        if rol != "Administrador":
-            print("Permiso denegado: solo Administrador puede actualizar especialidades.")
-            return False
-        """
-        Actualiza una especialidad existente en la base de datos.
-        """
-        conn = None
-        try:
-            conn = get_conexion()
-            cursor = conn.cursor()
-
-            sql = """
-            UPDATE Especialidad
-            SET nombre = ?, descripcion = ?
-            WHERE id_especialidad = ?
-            """
-            valores = (
-                especialidad.nombre,
-                especialidad.descripcion,
-                especialidad.id_especialidad
-            )
-
-            cursor.execute(sql, valores)
-            conn.commit()
-            print("Especialidad actualizada exitosamente.")
-            return True
-
-        except sqlite3.Error as e:
-            if conn:
-                conn.rollback()
-            print(f"Error al actualizar la especialidad: {e}")
-            return False
-        finally:
-            if conn:
-                conn.close()
-
     def eliminar_especialidad(self, id_especialidad, usuario_actual):
-        # Permisos: solo Administrador puede eliminar
         rol = UsuarioDAO().obtener_rol(usuario_actual)
         if rol != "Administrador":
-            print("Permiso denegado: solo Administrador puede eliminar especialidades.")
-            return False
-        """
-        Elimina una especialidad de la base de datos usando su ID.
-        """
+            return False, "Permiso denegado."
+        
         conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-
-            sql = "DELETE FROM Especialidad WHERE id_especialidad = ?"
-            
-            cursor.execute(sql, (id_especialidad,))
+            cursor.execute("DELETE FROM Especialidad WHERE id_especialidad = ?", (id_especialidad,))
             conn.commit()
-
             if cursor.rowcount > 0:
-                print("Especialidad eliminada exitosamente.")
-                return True
+                return True, "Especialidad eliminada exitosamente."
             else:
-                print("No se encontró la especialidad para eliminar.")
-                return False
-
+                return False, "No se encontró la especialidad."
         except sqlite3.Error as e:
             if conn:
                 conn.rollback()
+            # Verificamos si es un error de FK
+            if "FOREIGN KEY constraint failed" in str(e):
+                return False, "No se puede eliminar la especialidad porque tiene médicos asociados."
             print(f"Error al eliminar la especialidad: {e}")
-            return False
+            return False, f"Error de base de datos: {e}"
         finally:
             if conn:
                 conn.close()
-
-    def buscar_especialidad_por_nombre(self, nombre):
-        """
-        Busca especialidades cuyo nombre coincida parcialmente con el proporcionado.
-        Retorna una lista de objetos Especialidad.
-        """
-        conn = None
-        especialidades = []
-        try:
-            conn = get_conexion()
-            cursor = conn.cursor()
-
-            sql = "SELECT * FROM Especialidad WHERE nombre LIKE ?"
-            patron_busqueda = f"%{nombre}%"
-            cursor.execute(sql, (patron_busqueda,))
-            filas = cursor.fetchall()
-
-            for fila in filas:
-                especialidad = Especialidad(
-                    id_especialidad=fila[0],
-                    nombre=fila[1],
-                    descripcion=fila[2]
-                )
-                especialidades.append(especialidad)
-
-            return especialidades
-
-        except sqlite3.Error as e:
-            print(f"Error al buscar especialidades por nombre: {e}")
-            return []
-        finally:
-            if conn:
-                conn.close()
-
-    
