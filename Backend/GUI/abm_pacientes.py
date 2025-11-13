@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkcalendar import DateEntry
 from Backend.DAO.PacienteDAO import PacienteDAO
 from Backend.Model.Paciente import Paciente
 
@@ -25,7 +26,7 @@ class GestionPacientes(tk.Toplevel):
 
         fields = [
             ("Nombre:", "Entry"), ("Apellido:", "Entry"), ("DNI:", "Entry"),
-            ("Tipo DNI:", "Combobox"), ("Fecha Nacimiento:", "Entry"), 
+            ("Tipo DNI:", "Combobox"), ("Fecha Nacimiento:", "DateEntry"), 
             ("Teléfono:", "Entry"), ("Email:", "Entry")
         ]
 
@@ -37,6 +38,9 @@ class GestionPacientes(tk.Toplevel):
                 entry = ttk.Entry(form_frame, width=40)
                 entry.grid(row=i, column=1, padx=5, pady=5, sticky="w")
                 self.entries[label_text] = entry
+            elif widget_type == "DateEntry":
+                self.fecha_nac_entry = DateEntry(form_frame, width=38, date_pattern='yyyy/mm/dd', state="readonly")
+                self.fecha_nac_entry.grid(row=i, column=1, padx=5, pady=5, sticky="w")
             elif widget_type == "Combobox":
                 self.tipo_dni_combo = ttk.Combobox(form_frame, width=38, state="readonly", values=["DNI", "Pasaporte", "Libreta de Enrolamiento", "Libreta Cívica"])
                 self.tipo_dni_combo.grid(row=i, column=1, padx=5, pady=5, sticky="w")
@@ -60,14 +64,11 @@ class GestionPacientes(tk.Toplevel):
         style.configure("Treeview.Heading", background="#CCCCCC", foreground="black")
 
         self.tree = ttk.Treeview(tree_frame, columns=("id", "nombre", "apellido", "dni"), show="headings")
-        self.tree.heading("id", text="ID")
-        self.tree.heading("nombre", text="Nombre")
-        self.tree.heading("apellido", text="Apellido")
-        self.tree.heading("dni", text="DNI")
+        self.tree.heading("id", text="ID"); self.tree.heading("nombre", text="Nombre")
+        self.tree.heading("apellido", text="Apellido"); self.tree.heading("dni", text="DNI")
         
         self.tree.column("id", width=50, anchor="center", stretch=tk.NO)
-        self.tree.column("nombre", width=200)
-        self.tree.column("apellido", width=200)
+        self.tree.column("nombre", width=200); self.tree.column("apellido", width=200)
         self.tree.column("dni", width=100)
 
         self.tree.pack(fill="both", expand=True, side="left")
@@ -79,10 +80,8 @@ class GestionPacientes(tk.Toplevel):
         self.tree.bind("<<TreeviewSelect>>", self.seleccionar_paciente)
 
     def cargar_pacientes(self):
-        for i in self.tree.get_children():
-            self.tree.delete(i)
-        paciente_dao = PacienteDAO()
-        for p in paciente_dao.obtener_todos_los_pacientes():
+        for i in self.tree.get_children(): self.tree.delete(i)
+        for p in PacienteDAO().obtener_todos_los_pacientes():
             self.tree.insert("", "end", values=(p.id_paciente, p.nombre, p.apellido, p.dni))
 
     def seleccionar_paciente(self, _):
@@ -98,7 +97,7 @@ class GestionPacientes(tk.Toplevel):
             self.entries["Apellido:"].delete(0, tk.END); self.entries["Apellido:"].insert(0, paciente.apellido)
             self.entries["DNI:"].delete(0, tk.END); self.entries["DNI:"].insert(0, paciente.dni)
             self.tipo_dni_combo.set(paciente.tipo_dni)
-            self.entries["Fecha Nacimiento:"].delete(0, tk.END); self.entries["Fecha Nacimiento:"].insert(0, paciente.fecha_nacimiento)
+            self.fecha_nac_entry.set_date(paciente.fecha_nacimiento)
             self.entries["Teléfono:"].delete(0, tk.END); self.entries["Teléfono:"].insert(0, paciente.telefono)
             self.entries["Email:"].delete(0, tk.END); self.entries["Email:"].insert(0, paciente.email)
 
@@ -106,7 +105,6 @@ class GestionPacientes(tk.Toplevel):
         if not self.selected_paciente_id:
             messagebox.showwarning("Acción Requerida", "Por favor, seleccione un paciente de la lista.")
             return
-
         if messagebox.askyesno("Confirmar Eliminación", "¿Está seguro de que desea eliminar al paciente seleccionado?"):
             exito, mensaje = PacienteDAO().eliminar_paciente(self.selected_paciente_id, self.usuario)
             if exito:
@@ -134,7 +132,7 @@ class GestionPacientes(tk.Toplevel):
             usuario=paciente_original.usuario,
             nombre=self.entries["Nombre:"].get(),
             apellido=self.entries["Apellido:"].get(),
-            fecha_nacimiento=self.entries["Fecha Nacimiento:"].get(),
+            fecha_nacimiento=self.fecha_nac_entry.get(),
             tipo_dni=self.tipo_dni_combo.get(),
             dni=self.entries["DNI:"].get(),
             email=self.entries["Email:"].get(),
