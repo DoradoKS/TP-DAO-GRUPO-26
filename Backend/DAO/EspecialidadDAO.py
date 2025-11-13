@@ -9,6 +9,40 @@ class EspecialidadDAO:
     Gestiona las operaciones CRUD en la tabla Especialidad.
     """
 
+    def search(self, id_especialidad=None, nombre=None):
+        """Busca especialidades por ID y/o nombre (búsqueda parcial)."""
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM Especialidad"
+            params = []
+            conditions = []
+
+            if id_especialidad:
+                conditions.append("id_especialidad = ?")
+                params.append(id_especialidad)
+            
+            if nombre:
+                conditions.append("nombre LIKE ?")
+                params.append(nombre + '%')
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            
+            query += " ORDER BY id_especialidad"
+
+            cursor.execute(query, params)
+            filas = cursor.fetchall()
+            return [Especialidad(id_especialidad=f[0], nombre=f[1], descripcion=f[2]) for f in filas]
+        except sqlite3.Error as e:
+            print(f"Error al buscar especialidades: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
     def buscar_por_nombre_exacto(self, nombre):
         """Busca una especialidad por su nombre exacto (case-insensitive)."""
         conn = None
@@ -82,12 +116,12 @@ class EspecialidadDAO:
             if conn:
                 conn.close()
 
-    def obtener_todas_las_especialidades(self):
+    def get_all(self):
         conn = None
         try:
             conn = get_conexion()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM Especialidad ORDER BY nombre")
+            cursor.execute("SELECT * FROM Especialidad ORDER BY id_especialidad")
             filas = cursor.fetchall()
             return [Especialidad(id_especialidad=f[0], nombre=f[1], descripcion=f[2]) for f in filas]
         except sqlite3.Error as e:

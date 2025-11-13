@@ -65,7 +65,7 @@ class GestionEspecialidades(tk.Toplevel):
         for i in self.tree.get_children():
             self.tree.delete(i)
         especialidad_dao = EspecialidadDAO()
-        especialidades = especialidad_dao.obtener_todas_las_especialidades()
+        especialidades = especialidad_dao.get_all()
         for e in especialidades:
             self.tree.insert("", "end", values=(e.id_especialidad, e.nombre, e.descripcion))
 

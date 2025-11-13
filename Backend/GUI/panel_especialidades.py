@@ -1,6 +1,7 @@
 import tkinter as tk
-from .abm_especialidades import GestionEspecialidades # Corregido
+from .abm_especialidades import GestionEspecialidades
 from .alta_especialidad import AltaEspecialidad
+from .consulta_especialidades import ConsultaEspecialidades
 
 class PanelEspecialidades(tk.Toplevel):
     def __init__(self, parent):
@@ -29,21 +30,34 @@ class PanelEspecialidades(tk.Toplevel):
             "pady": 15
         }
 
-        border_alta = tk.Frame(button_container, bg="#FFD700", bd=2)
-        border_alta.pack(pady=10)
-        btn_alta = tk.Button(border_alta, text="Dar de Alta Especialidad", command=self.abrir_alta, **button_properties)
-        btn_alta.pack()
+        buttons_to_create = [
+            ("Dar de Alta Especialidad", self.abrir_alta),
+            ("Modificar / Dar de Baja", self.abrir_gestion),
+            ("Consultar Especialidades", self.abrir_consulta)
+        ]
 
-        border_gestion = tk.Frame(button_container, bg="#FFD700", bd=2)
-        border_gestion.pack(pady=10)
-        btn_gestion = tk.Button(border_gestion, text="Modificar / Dar de Baja", command=self.abrir_gestion, **button_properties)
-        btn_gestion.pack()
+        for text, command in buttons_to_create:
+            border_frame = tk.Frame(button_container, bg="#FFD700", bd=2)
+            border_frame.pack(pady=10)
+            btn = tk.Button(border_frame, text=text, command=command, **button_properties)
+            btn.pack()
+            btn.bind("<Enter>", self.on_enter)
+            btn.bind("<Leave>", self.on_leave)
+
+    def on_enter(self, e):
+        e.widget['background'] = '#AAAAAA'
+
+    def on_leave(self, e):
+        e.widget['background'] = '#CCCCCC'
 
     def abrir_alta(self):
         alta_window = AltaEspecialidad(self)
         alta_window.grab_set()
 
     def abrir_gestion(self):
-        # Corregido para usar la nueva clase
         gestion_window = GestionEspecialidades(self)
         gestion_window.grab_set()
+
+    def abrir_consulta(self):
+        consulta_window = ConsultaEspecialidades(self)
+        consulta_window.grab_set()

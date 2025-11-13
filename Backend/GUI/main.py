@@ -62,11 +62,22 @@ class MainMenu(tk.Tk):
                 
                 btn = tk.Button(border_frame, text=texto_boton, command=comando, **button_properties)
                 btn.pack()
+                btn.bind("<Enter>", self.on_enter)
+                btn.bind("<Leave>", self.on_leave)
+
 
         border_frame_salir = tk.Frame(button_container, bg="#FFD700", bd=2)
         border_frame_salir.pack(pady=20)
         salir_btn = tk.Button(border_frame_salir, text="Salir", command=self.quit, **button_properties)
         salir_btn.pack()
+        salir_btn.bind("<Enter>", self.on_enter)
+        salir_btn.bind("<Leave>", self.on_leave)
+
+    def on_enter(self, e):
+        e.widget['background'] = '#AAAAAA'
+
+    def on_leave(self, e):
+        e.widget['background'] = '#CCCCCC'
 
     def open_panel_pacientes(self):
         panel_pacientes_window = PanelPacientes(self)
