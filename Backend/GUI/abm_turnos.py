@@ -6,6 +6,9 @@ from Backend.DAO.PacienteDAO import PacienteDAO
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.Model.Turno import Turno
+from Backend.DAO.ConsultorioDAO import ConsultorioDAO
+from Backend.GUI.consulta_historial import ConsultaHistorial
+from Backend.GUI.registro_historial import RegistroHistorial
 
 from Backend.Validaciones.validaciones_turnos import validar_fecha
 
@@ -50,8 +53,12 @@ class ABMTurnos(tk.Toplevel):
         self.medico_combo = ttk.Combobox(form_frame, width=30)
         self.medico_combo.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
+        # ------------------- CONSULTORIO -------------------
+        # Consultorio se asigna automáticamente según disponibilidad; no se muestra selector
+        self.consultorio_combo = None
+
         # ---------------------- FECHA ----------------------
-        ttk.Label(form_frame, text="Fecha (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=5, sticky="e")
+        ttk.Label(form_frame, text="Fecha (YYYY-MM-DD):").grid(row=4, column=0, padx=5, pady=5, sticky="e")
         self.fecha_entry = DateEntry(
             form_frame,
             width=20,
@@ -59,14 +66,14 @@ class ABMTurnos(tk.Toplevel):
             background="darkblue",
             foreground="white"
         )
-        self.fecha_entry.grid(row=3, column=1, padx=5, pady=5, sticky="w")
+        self.fecha_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
 
         self.mostrar_horarios_btn = ttk.Button(
             form_frame,
             text="Mostrar horarios disponibles",
             command=self.mostrar_horarios_disponibles
         )
-        self.mostrar_horarios_btn.grid(row=3, column=2, padx=5, pady=5, sticky="w")
+        self.mostrar_horarios_btn.grid(row=4, column=2, padx=5, pady=5, sticky="w")
 
         # ------------------ LISTA HORARIOS ------------------
         horarios_frame = ttk.Frame(self)
@@ -88,18 +95,54 @@ class ABMTurnos(tk.Toplevel):
         ttk.Button(button_frame, text="Solicitar Turno", command=self.solicitar_turno).pack(side="left", padx=5)
         ttk.Button(button_frame, text="Cancelar Turno", command=self.cancelar_turno).pack(side="left", padx=5)
 
+        # Botones de acciones para el médico sobre el turno seleccionado
+        self.btn_ver_hist = ttk.Button(button_frame, text="Ver Historial del Paciente", command=self.ver_historial_paciente)
+        self.btn_reg_hist = ttk.Button(button_frame, text="Registrar Historial del Paciente", command=self.registrar_historial_paciente)
+        self.btn_ver_hist.pack(side="right", padx=5)
+        self.btn_reg_hist.pack(side="right", padx=5)
+
+        # Botones para marcar asistencia/inasistencia (solo médico)
+        self.btn_asist = ttk.Button(button_frame, text="Marcar Asistencia", command=self.marcar_asistencia)
+        self.btn_inasist = ttk.Button(button_frame, text="Marcar Inasistencia", command=self.marcar_inasistencia)
+        self.btn_asist.pack(side="right", padx=5)
+        self.btn_inasist.pack(side="right", padx=5)
+
         # ------------------ TREEVIEW ------------------
-        self.tree = ttk.Treeview(self, columns=("id", "paciente", "medico", "especialidad", "fecha", "hora"), show="headings")
+        self.tree = ttk.Treeview(self, columns=("id", "paciente", "medico", "especialidad", "consultorio", "fecha", "hora", "estado"), show="headings")
 
         self.tree.column("id", width=60, anchor="center")
         self.tree.column("paciente", width=150)
         self.tree.column("medico", width=150)
         self.tree.column("especialidad", width=120)
+        self.tree.column("consultorio", width=120)
         self.tree.column("fecha", width=90, anchor="center")
         self.tree.column("hora", width=70, anchor="center")
+        self.tree.column("estado", width=110, anchor="center")
+        self.tree.heading("consultorio", text="Consultorio")
+        self.tree.heading("estado", text="Estado")
 
 
         self.tree.pack(padx=10, pady=10, fill="both", expand=True)
+        # Tags de color por estado
+        self.tree.tag_configure('asistio', background='#c7f0c1')      # verde claro
+        self.tree.tag_configure('inasistencia', background='#f8c0c0') # rojo claro
+        self.tree.tag_configure('pendiente', background='#fff3b0')    # amarillo claro
+
+        # Adaptar la UI si es médico (no debe crear turnos)
+        if self.rol == "Medico":
+            for w in [self.paciente_combo, self.especialidad_combo, self.medico_combo, self.consultorio_combo, self.fecha_entry, self.mostrar_horarios_btn, self.slots_listbox]:
+                try:
+                    w.configure(state="disabled")
+                except Exception:
+                    pass
+            # Ocultar botón de solicitar para evitar confusiones
+            for child in button_frame.winfo_children():
+                if isinstance(child, ttk.Button) and child.cget("text") == "Solicitar Turno":
+                    child.pack_forget()
+        else:
+            # Ocultar botones de historial/asistencia para roles que no sean médico
+            for child in [self.btn_ver_hist, self.btn_reg_hist, self.btn_asist, self.btn_inasist]:
+                child.pack_forget()
 
 
     # ---------------------------------------------------------
@@ -115,6 +158,9 @@ class ABMTurnos(tk.Toplevel):
         self.especialidad_dao = EspecialidadDAO()
         self.especialidades = self.especialidad_dao.obtener_todas_las_especialidades()
         self.especialidad_combo["values"] = [e.nombre for e in self.especialidades]
+
+        # Consultorios: se usarán internamente para mostrar descripción en la tabla
+        self.consultorios = ConsultorioDAO().obtener_todos()
 
         if self.rol == "Paciente":
             paciente = self.paciente_dao.obtener_paciente_por_usuario(self.usuario)
@@ -143,6 +189,11 @@ class ABMTurnos(tk.Toplevel):
     # CARGA DE TURNOS EN LA TABLA
     # ---------------------------------------------------------
     def cargar_turnos(self):
+        # Cierre automático del día: marcar inasistencias pendientes
+        try:
+            TurnoDAO().cerrar_dia()
+        except Exception:
+            pass
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -163,21 +214,29 @@ class ABMTurnos(tk.Toplevel):
             pac = PacienteDAO().buscar_paciente_por_id_paciente(t.id_paciente)
             med = MedicoDAO().obtener_medico_por_id(t.id_medico)
             esp = EspecialidadDAO().obtener_especialidad_por_id(med.id_especialidad) if med else None
+            cons_desc = ""
+            if hasattr(t, 'id_consultorio') and t.id_consultorio:
+                cons = next((c for c in getattr(self, 'consultorios', []) if c.id_consultorio == t.id_consultorio), None)
+                cons_desc = cons.descripcion if cons else str(t.id_consultorio)
 
             paciente_nombre = f"{pac.nombre} {pac.apellido}" if pac else "N/A"
             medico_nombre = f"{med.nombre} {med.apellido}" if med else "N/A"
             especialidad_nombre = esp.nombre if esp else "N/A"
 
             fecha, hora = t.fecha_hora.split(" ")
+            estado = 'Pendiente' if t.asistio is None else ('Asistió' if t.asistio == 1 else 'Inasistencia')
+            tag = 'pendiente' if t.asistio is None else ('asistio' if t.asistio == 1 else 'inasistencia')
 
             self.tree.insert("", "end", values=(
                 t.id_turno,
                 paciente_nombre,
                 medico_nombre,
                 especialidad_nombre,
+                cons_desc,
                 fecha,
-                hora
-            ))
+                hora,
+                estado
+            ), tags=(tag,))
 
 
 
@@ -230,7 +289,6 @@ class ABMTurnos(tk.Toplevel):
         fecha = self.fecha_entry.get()
         pac_nombre = self.paciente_combo.get()
         med_nombre = self.medico_combo.get()
-
         if not (fecha and pac_nombre and med_nombre):
             messagebox.showerror("Error", "Complete todos los campos.")
             return
@@ -254,15 +312,17 @@ class ABMTurnos(tk.Toplevel):
         turno = Turno(
             id_paciente=pac.id_paciente,
             id_medico=med.id_medico,
+            id_consultorio=None,
             fecha_hora=fecha_hora
         )
 
-        if TurnoDAO().crear_turno(turno, self.usuario):
-            messagebox.showinfo("OK", "Turno creado correctamente.")
+        id_creado, mensaje = TurnoDAO().crear_turno(turno, self.usuario)
+        if id_creado:
+            messagebox.showinfo("Éxito", mensaje)
             self.cargar_turnos()
             self.mostrar_horarios_disponibles()
         else:
-            messagebox.showerror("Error", "No se pudo crear el turno.")
+            messagebox.showerror("Error", mensaje)
 
 
     # ---------------------------------------------------------
@@ -287,3 +347,67 @@ class ABMTurnos(tk.Toplevel):
             self.mostrar_horarios_disponibles()
         else:
             messagebox.showerror("Error", "No se pudo cancelar el turno.")
+
+    # ---------------------------------------------------------
+    # ACCIONES MÉDICO: HISTORIAL DESDE AGENDA
+    # ---------------------------------------------------------
+    def _obtener_paciente_seleccionado_de_turno(self):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showwarning("Advertencia", "Seleccione un turno de la tabla.")
+            return None
+        item = self.tree.item(sel[0])
+        id_turno = item["values"][0]
+        turno = TurnoDAO().obtener_turno_por_id(id_turno)
+        if not turno:
+            messagebox.showerror("Error", "No se pudo cargar el turno seleccionado.")
+            return None
+        return turno.id_paciente
+
+    def ver_historial_paciente(self):
+        if self.rol != "Medico":
+            return
+        id_paciente = self._obtener_paciente_seleccionado_de_turno()
+        if id_paciente is None:
+            return
+        ConsultaHistorial(self, self.usuario, self.rol, id_paciente_fijo=id_paciente)
+
+    def registrar_historial_paciente(self):
+        if self.rol != "Medico":
+            return
+        id_paciente = self._obtener_paciente_seleccionado_de_turno()
+        if id_paciente is None:
+            return
+        RegistroHistorial(self, self.usuario, self.rol, id_paciente_fijo=id_paciente)
+
+    def _obtener_id_turno_seleccionado(self):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showwarning("Advertencia", "Seleccione un turno de la tabla.")
+            return None
+        item = self.tree.item(sel[0])
+        return item["values"][0]
+
+    def marcar_asistencia(self):
+        if self.rol != "Medico":
+            return
+        id_turno = self._obtener_id_turno_seleccionado()
+        if id_turno is None:
+            return
+        ok, msg = TurnoDAO().marcar_asistencia(id_turno, True, self.usuario)
+        if ok:
+            messagebox.showinfo("OK", msg)
+        else:
+            messagebox.showerror("Error", msg)
+
+    def marcar_inasistencia(self):
+        if self.rol != "Medico":
+            return
+        id_turno = self._obtener_id_turno_seleccionado()
+        if id_turno is None:
+            return
+        ok, msg = TurnoDAO().marcar_asistencia(id_turno, False, self.usuario)
+        if ok:
+            messagebox.showinfo("OK", msg)
+        else:
+            messagebox.showerror("Error", msg)

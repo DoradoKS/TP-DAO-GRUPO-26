@@ -47,8 +47,8 @@ class AltaPaciente(tk.Toplevel):
         row += 1
 
         ttk.Label(main_frame, text="Barrio:").grid(row=row, column=0, padx=8, pady=5, sticky="e")
-        self.barrio_combo = ttk.Combobox(main_frame, width=33, state="readonly")
-        self.barrio_combo.grid(row=row, column=1, padx=8, pady=5, sticky="w")
+        self.barrio_entry = ttk.Entry(main_frame, width=35)
+        self.barrio_entry.grid(row=row, column=1, padx=8, pady=5, sticky="w")
         row += 1
 
         guardar_button = ttk.Button(self, text="Registrar Paciente", command=self.guardar_paciente)
@@ -63,10 +63,8 @@ class AltaPaciente(tk.Toplevel):
         if self.obras_sociales:
             self.obra_social_combo.current(0)
 
-        self.barrios = BarrioDAO().obtener_todos_los_barrios()
-        self.barrio_combo['values'] = [b.nombre for b in self.barrios]
-        if self.barrios:
-            self.barrio_combo.current(0)
+        # Para barrio ahora se ingresa por teclado; no cargamos combobox
+        self.barrios = []
 
     def guardar_paciente(self):
         usuario = self.entries["Usuario:"].get().strip()
@@ -79,6 +77,7 @@ class AltaPaciente(tk.Toplevel):
         telefono = self.entries["Teléfono:"].get().strip()
         calle = self.entries["Calle:"].get().strip()
         numero_calle = self.entries["Número:"].get().strip()
+        barrio_nombre = self.barrio_entry.get().strip()
 
         if not all([usuario, contrasena, nombre, apellido, fecha_nac, dni, email, telefono, calle, numero_calle]):
             messagebox.showerror("Error", "Todos los campos son obligatorios.")
@@ -93,8 +92,11 @@ class AltaPaciente(tk.Toplevel):
         tipo_dni_nombre = self.tipo_dni_combo.get()
         obra_social_nombre = self.obra_social_combo.get()
         id_obra_social = next((o.id_obra_social for o in self.obras_sociales if o.nombre == obra_social_nombre), None)
-        barrio_nombre = self.barrio_combo.get()
-        id_barrio = next((b.id_barrio for b in self.barrios if b.nombre == barrio_nombre), None)
+        if not barrio_nombre:
+            messagebox.showerror("Error", "Debe ingresar el barrio.")
+            return
+        barrio_dao = BarrioDAO()
+        id_barrio = barrio_dao.obtener_o_crear_barrio(barrio_nombre)
 
         if not all([tipo_dni_nombre, id_obra_social, id_barrio]):
             messagebox.showerror("Error", "Debe seleccionar Tipo DNI, Obra Social y Barrio.")

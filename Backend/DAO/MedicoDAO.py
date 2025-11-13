@@ -30,13 +30,13 @@ class MedicoDAO:
             cursor = conn.cursor()
             sql = """
             INSERT INTO Medico (usuario, matricula, nombre, apellido, tipo_dni, dni, 
-                                calle, numero_calle, email, telefono, id_especialidad)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                calle, numero_calle, id_barrio, email, telefono, id_especialidad)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             valores = (
                 medico.usuario, medico.matricula, medico.nombre, medico.apellido,
                 medico.tipo_dni, medico.dni, medico.calle, medico.numero_calle,
-                medico.email, medico.telefono, medico.id_especialidad
+                medico.id_barrio, medico.email, medico.telefono, medico.id_especialidad
             )
             cursor.execute(sql, valores)
             conn.commit()
@@ -89,14 +89,15 @@ class MedicoDAO:
             
             sql = """
             UPDATE Medico SET usuario = ?, matricula = ?, nombre = ?, apellido = ?, tipo_dni = ?, 
-                               dni = ?, calle = ?, numero_calle = ?, email = ?, telefono = ?, 
-                               id_especialidad = ?
+                               dni = ?, calle = ?, numero_calle = ?, id_barrio = ?, email = ?, 
+                               telefono = ?, id_especialidad = ?
             WHERE id_medico = ?
             """
             valores = (
                 medico.usuario, medico.matricula, medico.nombre, medico.apellido,
                 medico.tipo_dni, medico.dni, medico.calle, medico.numero_calle,
-                medico.email, medico.telefono, medico.id_especialidad, medico.id_medico
+                medico.id_barrio, medico.email, medico.telefono, medico.id_especialidad, 
+                medico.id_medico
             )
             cursor.execute(sql, valores)
             conn.commit()
@@ -142,7 +143,7 @@ class MedicoDAO:
             cursor.execute("SELECT * FROM Medico ORDER BY apellido, nombre")
             return [Medico(id_medico=f[0], usuario=f[1], matricula=f[2], nombre=f[3], apellido=f[4],
                              tipo_dni=f[5], dni=f[6], calle=f[7], numero_calle=f[8], email=f[9],
-                             telefono=f[10], id_especialidad=f[11]) for f in cursor.fetchall()]
+                             telefono=f[10], id_especialidad=f[11], id_barrio=f[12]) for f in cursor.fetchall()]
         except sqlite3.Error as e:
             print(f"Error al obtener todos los médicos: {e}")
             return []
@@ -159,7 +160,8 @@ class MedicoDAO:
             if fila:
                 return Medico(id_medico=fila[0], usuario=fila[1], matricula=fila[2], nombre=fila[3],
                                 apellido=fila[4], tipo_dni=fila[5], dni=fila[6], calle=fila[7],
-                                numero_calle=fila[8], email=fila[9], telefono=fila[10], id_especialidad=fila[11])
+                                numero_calle=fila[8], email=fila[9], telefono=fila[10], 
+                                id_especialidad=fila[11], id_barrio=fila[12])
             return None
         except sqlite3.Error as e:
             print(f"Error al obtener médico por ID: {e}")
@@ -175,7 +177,7 @@ class MedicoDAO:
             cursor.execute("SELECT * FROM Medico WHERE id_especialidad = ?", (id_especialidad,))
             return [Medico(id_medico=f[0], usuario=f[1], matricula=f[2], nombre=f[3], apellido=f[4],
                              tipo_dni=f[5], dni=f[6], calle=f[7], numero_calle=f[8], email=f[9],
-                             telefono=f[10], id_especialidad=f[11]) for f in cursor.fetchall()]
+                             telefono=f[10], id_especialidad=f[11], id_barrio=f[12]) for f in cursor.fetchall()]
         except sqlite3.Error as e:
             print(f"Error al obtener médicos por especialidad: {e}")
             return []
@@ -192,7 +194,8 @@ class MedicoDAO:
             if fila:
                 return Medico(id_medico=fila[0], usuario=fila[1], matricula=fila[2], nombre=fila[3],
                                 apellido=fila[4], tipo_dni=fila[5], dni=fila[6], calle=fila[7],
-                                numero_calle=fila[8], email=fila[9], telefono=fila[10], id_especialidad=fila[11])
+                                numero_calle=fila[8], email=fila[9], telefono=fila[10], 
+                                id_especialidad=fila[11], id_barrio=fila[12])
             return None
         except sqlite3.Error as e:
             print(f"Error al obtener médico por usuario: {e}")
@@ -207,7 +210,7 @@ class MedicoDAO:
             cursor = conn.cursor()
             sql = """
             SELECT m.id_medico, m.usuario, m.matricula, m.nombre, m.apellido, m.tipo_dni, m.dni, 
-                   m.calle, m.numero_calle, m.email, m.telefono, e.nombre 
+                   m.calle, m.numero_calle, m.email, m.telefono, m.id_especialidad, m.id_barrio, e.nombre 
             FROM Medico m
             LEFT JOIN Especialidad e ON m.id_especialidad = e.id_especialidad
             ORDER BY m.id_medico
@@ -227,7 +230,7 @@ class MedicoDAO:
             cursor = conn.cursor()
             sql = """
             SELECT m.id_medico, m.usuario, m.matricula, m.nombre, m.apellido, m.tipo_dni, m.dni, 
-                   m.calle, m.numero_calle, m.email, m.telefono, e.nombre 
+                   m.calle, m.numero_calle, m.email, m.telefono, m.id_especialidad, m.id_barrio, e.nombre 
             FROM Medico m
             LEFT JOIN Especialidad e ON m.id_especialidad = e.id_especialidad
             WHERE 1=1

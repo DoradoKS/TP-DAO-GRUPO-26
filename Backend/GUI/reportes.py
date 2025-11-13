@@ -35,6 +35,7 @@ class Reportes(tk.Toplevel):
         ttk.Radiobutton(report_frame, text="Turnos por Médico", variable=self.report_type, value="medico").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Turnos por Paciente", variable=self.report_type, value="paciente").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Turnos por Día", variable=self.report_type, value="dia").pack(anchor="w")
+        ttk.Radiobutton(report_frame, text="Asistencias vs Inasistencias por Mes", variable=self.report_type, value="asistencia_mes").pack(anchor="w")
 
         generate_button = ttk.Button(report_frame, text="Generar Reporte", command=self.generar_reporte)
         generate_button.pack(pady=5)
@@ -62,6 +63,8 @@ class Reportes(tk.Toplevel):
             self.reporte_turnos_por_paciente()
         elif report_type == "dia":
             self.reporte_turnos_por_dia()
+        elif report_type == "asistencia_mes":
+            self.reporte_asistencias_vs_inasistencias_por_mes()
 
     def reporte_turnos_por_medico(self):
         turno_dao = TurnoDAO()
@@ -104,6 +107,33 @@ class Reportes(tk.Toplevel):
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+
+        canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def reporte_asistencias_vs_inasistencias_por_mes(self):
+        turno_dao = TurnoDAO()
+        datos = turno_dao.obtener_resumen_asistencia_por_mes()
+        if not datos:
+            messagebox.showinfo("Info", "No hay datos de asistencia/inasistencia registrados.")
+            return
+
+        meses = [d[0] for d in datos]
+        asist = [d[1] for d in datos]
+        inasist = [d[2] for d in datos]
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        x = range(len(meses))
+        ax.bar([i - 0.2 for i in x], asist, width=0.4, label='Asistencias')
+        ax.bar([i + 0.2 for i in x], inasist, width=0.4, label='Inasistencias')
+        ax.set_title("Asistencias vs Inasistencias por Mes")
+        ax.set_xlabel("Mes")
+        ax.set_ylabel("Cantidad")
+        ax.set_xticks(x)
+        ax.set_xticklabels(meses, rotation=45, ha="right")
+        ax.legend()
         plt.tight_layout()
 
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)

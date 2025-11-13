@@ -75,6 +75,24 @@ class ObraSocialDAO:
         finally:
             if conn:
                 conn.close()
+
+    def actualizar_obra_social(self, obra_social: ObraSocial, usuario_actual: str):
+        # Permisos: solo Administrador puede actualizar
+        rol = UsuarioDAO().obtener_rol(usuario_actual)
+        if rol != "Administrador":
+            return False, "Permiso denegado."
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE ObraSocial SET nombre = ? WHERE id_obra_social = ?", (obra_social.nombre, obra_social.id_obra_social))
+            conn.commit()
+            return cursor.rowcount > 0, ("Obra Social actualizada exitosamente." if cursor.rowcount > 0 else "No se encontró la Obra Social.")
+        except sqlite3.Error as e:
+            if conn: conn.rollback()
+            return False, f"Error al actualizar la Obra Social: {e}"
+        finally:
+            if conn: conn.close()
     
     def obtener_obra_social(self):
         """

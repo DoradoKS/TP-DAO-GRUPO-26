@@ -71,6 +71,36 @@ class BarrioDAO:
             if conn:
                 conn.close()
 
+    def buscar_barrio_por_nombre(self, nombre):
+        """
+        Retorna un objeto Barrio dado su nombre exacto, o None si no existe.
+        """
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id_barrio, nombre FROM Barrio WHERE nombre = ?", (nombre,))
+            fila = cursor.fetchone()
+            if fila:
+                return Barrio(id_barrio=fila[0], nombre=fila[1])
+            return None
+        except sqlite3.Error as e:
+            print(f"Error al buscar barrio por nombre: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+    def obtener_o_crear_barrio(self, nombre):
+        """
+        Obtiene el id del barrio por nombre; si no existe, lo crea y retorna su id.
+        """
+        existente = self.buscar_barrio_por_nombre(nombre)
+        if existente:
+            return existente.id_barrio
+        nuevo_id = self.crear_barrio(Barrio(nombre=nombre))
+        return nuevo_id
+
     def obtener_barrio_por_id(self, id_barrio):
         """
         Retorna un objeto Barrio dado su ID.

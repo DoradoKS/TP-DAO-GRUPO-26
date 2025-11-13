@@ -80,11 +80,13 @@ CREATE TABLE IF NOT EXISTS Medico (
     dni TEXT NOT NULL,
     calle TEXT,
     numero_calle INTEGER,
+    id_barrio INTEGER,
     email TEXT NOT NULL,
     telefono TEXT,
     id_especialidad INTEGER NOT NULL,
     UNIQUE(tipo_dni, dni),
     FOREIGN KEY (usuario) REFERENCES Usuario(usuario),
+    FOREIGN KEY (id_barrio) REFERENCES Barrio(id_barrio),
     FOREIGN KEY (id_especialidad) REFERENCES Especialidad(id_especialidad)
 );
 """
@@ -94,10 +96,12 @@ CREATE TABLE IF NOT EXISTS Turno (
     id_turno INTEGER PRIMARY KEY AUTOINCREMENT,
     id_paciente INTEGER NOT NULL,
     id_medico INTEGER NOT NULL,
+    id_consultorio INTEGER,
     fecha_hora DATETIME NOT NULL,
     motivo TEXT,
     FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
-    FOREIGN KEY (id_medico) REFERENCES Medico(id_medico)
+    FOREIGN KEY (id_medico) REFERENCES Medico(id_medico),
+    FOREIGN KEY (id_consultorio) REFERENCES Consultorio(id_consultorio)
 );
 """
 
@@ -105,8 +109,12 @@ SQL_CREAR_TABLA_HISTORIAL = """
 CREATE TABLE IF NOT EXISTS Historial (
     id_historial INTEGER PRIMARY KEY AUTOINCREMENT,
     id_paciente INTEGER NOT NULL,
+    id_medico INTEGER NOT NULL,
+    fecha DATETIME NOT NULL,
     diagnostico TEXT,
-    FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente)
+    observaciones TEXT,
+    FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
+    FOREIGN KEY (id_medico) REFERENCES Medico(id_medico)
 );
 """
 

@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
+from Backend.DAO.BarrioDAO import BarrioDAO
 from Backend.Model.Medico import Medico
 from Backend.DAO.UsuarioDAO import UsuarioDAO
 
@@ -9,10 +10,11 @@ class AltaMedico(tk.Toplevel):
     def __init__(self, parent, usuario="admin"):
         super().__init__(parent)
         self.title("Alta de Nuevo Médico")
-        self.geometry("500x500")
+        self.geometry("500x600")
         self.usuario = usuario
 
         self.especialidades = []
+        self.barrios = []
         self.entries = {}
 
         self.create_widgets()
@@ -26,6 +28,7 @@ class AltaMedico(tk.Toplevel):
             ("Usuario:", "Entry"), ("Contraseña:", "Entry"), ("Nombre:", "Entry"), 
             ("Apellido:", "Entry"), ("DNI:", "Entry"), ("Tipo DNI:", "Combobox"), 
             ("Matrícula:", "Entry"), ("Teléfono:", "Entry"), ("Email:", "Entry"),
+            ("Calle:", "Entry"), ("Número:", "Entry"), ("Barrio:", "Entry"),
             ("Especialidad:", "Combobox")
         ]
 
@@ -42,6 +45,10 @@ class AltaMedico(tk.Toplevel):
                     self.tipo_dni_combo = ttk.Combobox(main_frame, width=38, state="readonly", values=["DNI", "Pasaporte", "Libreta de Enrolamiento", "Libreta Cívica"])
                     self.tipo_dni_combo.grid(row=i, column=1, padx=10, pady=5)
                     self.tipo_dni_combo.current(0)
+                elif label_text == "Barrio:":
+                    entry = ttk.Entry(main_frame, width=40)
+                    entry.grid(row=i, column=1, padx=10, pady=5)
+                    self.entries[label_text] = entry
                 elif label_text == "Especialidad:":
                     self.especialidad_combo = ttk.Combobox(main_frame, width=38, state="readonly")
                     self.especialidad_combo.grid(row=i, column=1, padx=10, pady=5)
@@ -55,6 +62,8 @@ class AltaMedico(tk.Toplevel):
         if self.especialidades:
             self.especialidad_combo.current(0)
 
+        self.barrios = []  # Ahora barrio se ingresa por teclado
+
     def guardar_medico(self):
         usuario = self.entries["Usuario:"].get().strip()
         contraseña = self.entries["Contraseña:"].get().strip()
@@ -65,12 +74,26 @@ class AltaMedico(tk.Toplevel):
         matricula = self.entries["Matrícula:"].get().strip()
         telefono = self.entries["Teléfono:"].get().strip()
         email = self.entries["Email:"].get().strip()
+        calle = self.entries["Calle:"].get().strip()
+        numero_calle = self.entries["Número:"].get().strip()
+        barrio_nombre = self.entries["Barrio:"].get().strip()
         
         selected_especialidad_nombre = self.especialidad_combo.get()
         id_especialidad = next((e.id_especialidad for e in self.especialidades if e.nombre == selected_especialidad_nombre), None)
+        
+        if not barrio_nombre:
+            messagebox.showerror("Error", "Debe ingresar el barrio.")
+            return
+        id_barrio = BarrioDAO().obtener_o_crear_barrio(barrio_nombre)
 
-        if not all([usuario, contraseña, nombre, apellido, dni, tipo_dni, matricula, telefono, email, id_especialidad]):
+        if not all([usuario, contraseña, nombre, apellido, dni, tipo_dni, matricula, telefono, email, calle, numero_calle, id_especialidad, id_barrio]):
             messagebox.showerror("Error", "Todos los campos son obligatorios.")
+            return
+
+        try:
+            numero_calle_int = int(numero_calle)
+        except ValueError:
+            messagebox.showerror("Error", "El número de calle debe ser un entero.")
             return
 
         usuario_dao = UsuarioDAO()
@@ -82,7 +105,8 @@ class AltaMedico(tk.Toplevel):
         medico = Medico(
             usuario=usuario, nombre=nombre, apellido=apellido, matricula=matricula,
             tipo_dni=tipo_dni, dni=dni, email=email, telefono=telefono,
-            id_especialidad=id_especialidad, calle="Default", numero_calle=123
+            id_especialidad=id_especialidad, calle=calle, numero_calle=numero_calle_int,
+            id_barrio=id_barrio
         )
 
         id_creado, mensaje = MedicoDAO().crear_medico(medico, self.usuario)

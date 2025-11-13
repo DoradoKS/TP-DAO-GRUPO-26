@@ -36,9 +36,49 @@ def get_conexion():
     if not DB_NAME.exists():
         _inicializar_bdd()
 
+    def _aplicar_migraciones(conn):
+        try:
+            cur = conn.cursor()
+            # Verificar columnas existentes en tabla Historial
+            cur.execute("PRAGMA table_info(Historial);")
+            columnas = [fila[1] for fila in cur.fetchall()]  # nombre de columna en índice 1
+
+            cambios = []
+            if 'id_medico' not in columnas:
+                cambios.append(("id_medico", "INTEGER"))
+            if 'fecha' not in columnas:
+                cambios.append(("fecha", "DATETIME"))
+            if 'observaciones' not in columnas:
+                cambios.append(("observaciones", "TEXT"))
+
+            for nombre, tipo in cambios:
+                print(f"Migración: agregando columna '{nombre}' ({tipo}) a tabla Historial...")
+                cur.execute(f"ALTER TABLE Historial ADD COLUMN {nombre} {tipo};")
+                conn.commit()
+            if cambios:
+                print("Migración aplicada: columnas agregadas a Historial:", ", ".join(n for n, _ in cambios))
+
+            # Migraciones para Turno
+            cur.execute("PRAGMA table_info(Turno);")
+            columnas_turno = [fila[1] for fila in cur.fetchall()]
+            cambios_turno = []
+            if 'asistio' not in columnas_turno:
+                cambios_turno.append(("asistio", "INTEGER"))
+
+            for nombre, tipo in cambios_turno:
+                print(f"Migración: agregando columna '{nombre}' ({tipo}) a tabla Turno...")
+                cur.execute(f"ALTER TABLE Turno ADD COLUMN {nombre} {tipo};")
+                conn.commit()
+            if cambios_turno:
+                print("Migración aplicada: columnas agregadas a Turno:", ", ".join(n for n, _ in cambios_turno))
+        except sqlite3.Error as e:
+            # No bloquear la conexión si falla la migración; solo informar
+            print(f"Advertencia: no se pudo aplicar migraciones: {e}")
+
     try:
         conn = sqlite3.connect(DB_NAME)
         conn.execute("PRAGMA foreign_keys = ON;")
+        _aplicar_migraciones(conn)
         return conn
     except sqlite3.Error as e:
         print(f"Error al conectar con la base de datos: {e}")

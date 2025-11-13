@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
+from Backend.DAO.BarrioDAO import BarrioDAO
 from Backend.Model.Medico import Medico
 
 class GestionMedicos(tk.Toplevel):
@@ -14,10 +15,12 @@ class GestionMedicos(tk.Toplevel):
 
         self.entries = {}
         self.especialidades = []
+        self.barrios = []
         self.selected_medico_id = None
 
         self.create_widgets()
         self.cargar_especialidades()
+        self.cargar_barrios()
         self.cargar_medicos()
 
     def create_widgets(self):
@@ -30,7 +33,8 @@ class GestionMedicos(tk.Toplevel):
         fields = [
             ("Nombre:", "Entry"), ("Apellido:", "Entry"), ("DNI:", "Entry"),
             ("Tipo DNI:", "Combobox"), ("Matrícula:", "Entry"), ("Teléfono:", "Entry"),
-            ("Email:", "Entry"), ("Especialidad:", "Combobox")
+            ("Email:", "Entry"), ("Calle:", "Entry"), ("Número:", "Entry"),
+            ("Barrio:", "Entry"), ("Especialidad:", "Combobox")
         ]
         
         for i, (label_text, widget_type) in enumerate(fields):
@@ -44,6 +48,10 @@ class GestionMedicos(tk.Toplevel):
             elif label_text == "Tipo DNI:":
                 self.tipo_dni_combo = ttk.Combobox(form_frame, width=38, state="readonly", values=["DNI", "Pasaporte", "Libreta de Enrolamiento", "Libreta Cívica"])
                 self.tipo_dni_combo.grid(row=i, column=1, padx=5, pady=5, sticky="w")
+            elif label_text == "Barrio:":
+                entry = ttk.Entry(form_frame, width=40)
+                entry.grid(row=i, column=1, padx=5, pady=5, sticky="w")
+                self.entries[label_text] = entry
             elif label_text == "Especialidad:":
                 self.especialidad_combo = ttk.Combobox(form_frame, width=38, state="readonly")
                 self.especialidad_combo.grid(row=i, column=1, padx=5, pady=5, sticky="w")
@@ -91,6 +99,10 @@ class GestionMedicos(tk.Toplevel):
         self.especialidades = EspecialidadDAO().obtener_todas_las_especialidades()
         self.especialidad_combo["values"] = [e.nombre for e in self.especialidades]
 
+    def cargar_barrios(self):
+        # Ya no usamos combobox para barrio; solo precargamos lista para mostrar nombre
+        self.barrios = BarrioDAO().obtener_todos_los_barrios()
+
     def seleccionar_medico(self, _):
         selected_item = self.tree.selection()
         if not selected_item: return
@@ -107,6 +119,12 @@ class GestionMedicos(tk.Toplevel):
             self.entries["Matrícula:"].delete(0, tk.END); self.entries["Matrícula:"].insert(0, medico.matricula)
             self.entries["Teléfono:"].delete(0, tk.END); self.entries["Teléfono:"].insert(0, medico.telefono)
             self.entries["Email:"].delete(0, tk.END); self.entries["Email:"].insert(0, medico.email)
+            self.entries["Calle:"].delete(0, tk.END); self.entries["Calle:"].insert(0, medico.calle or "")
+            self.entries["Número:"].delete(0, tk.END); self.entries["Número:"].insert(0, str(medico.numero_calle or ""))
+            
+            barrio_nombre = next((b.nombre for b in self.barrios if b.id_barrio == medico.id_barrio), "")
+            self.entries["Barrio:"].delete(0, tk.END)
+            self.entries["Barrio:"].insert(0, barrio_nombre)
             
             especialidad_nombre = next((e.nombre for e in self.especialidades if e.id_especialidad == medico.id_especialidad), "")
             self.especialidad_combo.set(especialidad_nombre)
@@ -123,6 +141,7 @@ class GestionMedicos(tk.Toplevel):
                 self.cargar_medicos()
                 for entry in self.entries.values(): entry.delete(0, tk.END)
                 self.especialidad_combo.set("")
+                self.entries["Barrio:"].delete(0, tk.END)
                 self.tipo_dni_combo.set("")
                 self.selected_medico_id = None
             else:
@@ -139,6 +158,19 @@ class GestionMedicos(tk.Toplevel):
             return
         
         id_especialidad = next((e.id_especialidad for e in self.especialidades if e.nombre == self.especialidad_combo.get()), None)
+        
+        barrio_nombre = self.entries["Barrio:"].get().strip()
+        if not barrio_nombre:
+            messagebox.showerror("Error", "El barrio es obligatorio.")
+            return
+        id_barrio = BarrioDAO().obtener_o_crear_barrio(barrio_nombre)
+        
+        numero_calle_str = self.entries["Número:"].get().strip()
+        try:
+            numero_calle = int(numero_calle_str) if numero_calle_str else None
+        except ValueError:
+            messagebox.showerror("Error", "El número de calle debe ser un entero.")
+            return
 
         medico = Medico(
             id_medico=self.selected_medico_id,
@@ -151,8 +183,9 @@ class GestionMedicos(tk.Toplevel):
             email=self.entries["Email:"].get(),
             telefono=self.entries["Teléfono:"].get(),
             id_especialidad=id_especialidad,
-            calle=medico_original.calle if medico_original.calle else "Default",
-            numero_calle=medico_original.numero_calle if medico_original.numero_calle else 123
+            calle=self.entries["Calle:"].get().strip(),
+            numero_calle=numero_calle,
+            id_barrio=id_barrio
         )
         
         exito, mensaje = MedicoDAO().actualizar_medico(medico, self.usuario)

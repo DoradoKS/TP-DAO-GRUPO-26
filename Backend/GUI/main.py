@@ -4,6 +4,10 @@ from .panel_medicos import PanelMedicos
 from .panel_especialidades import PanelEspecialidades
 from .abm_turnos import ABMTurnos
 from .reportes import Reportes
+from .registro_historial import RegistroHistorial
+from .consulta_historial import ConsultaHistorial
+from .abm_consultorios import GestionConsultorios
+from .abm_obras_sociales import GestionObrasSociales
 
 class MainMenu(tk.Tk):
     def __init__(self, rol, usuario):
@@ -51,7 +55,11 @@ class MainMenu(tk.Tk):
             "Gestionar Pacientes": (self.open_panel_pacientes, ["Administrador"]),
             "Gestionar Médicos": (self.open_panel_medicos, ["Administrador"]),
             "Gestionar Especialidades": (self.open_panel_especialidades, ["Administrador"]),
+            "Gestionar Consultorios": (self.open_gestion_consultorios, ["Administrador"]),
+            "Gestionar Obras Sociales": (self.open_gestion_obras, ["Administrador"]),
             "Gestionar Turnos": (self.open_abm_turnos, ["Administrador", "Medico", "Paciente"]),
+            "Registrar Historial Clínico": (self.open_registro_historial, ["Medico"]),
+            "Consultar Historial Clínico": (self.open_consulta_historial, ["Administrador", "Medico", "Paciente"]),
             "Ver Reportes": (self.open_reportes, ["Administrador", "Medico"]),
         }
 
@@ -98,3 +106,19 @@ class MainMenu(tk.Tk):
     def open_reportes(self):
         reportes_window = Reportes(self)
         reportes_window.grab_set()
+
+    def open_registro_historial(self):
+        registro_window = RegistroHistorial(self, self.usuario, self.rol)
+        registro_window.grab_set()
+
+    def open_consulta_historial(self):
+        consulta_window = ConsultaHistorial(self, self.usuario, self.rol)
+        consulta_window.grab_set()
+
+    def open_gestion_consultorios(self):
+        win = GestionConsultorios(self, self.usuario)
+        win.grab_set()
+
+    def open_gestion_obras(self):
+        win = GestionObrasSociales(self, self.usuario)
+        win.grab_set()

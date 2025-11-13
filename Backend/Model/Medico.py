@@ -2,8 +2,8 @@
 
 class Medico:
     def __init__(self, id_medico=None, usuario=None, matricula=None, nombre=None, apellido=None, 
-                 tipo_dni=None, dni=None, calle=None, numero_calle=None, email=None, telefono=None, 
-                 id_especialidad=None):
+                 tipo_dni=None, dni=None, calle=None, numero_calle=None, id_barrio=None, email=None, 
+                 telefono=None, id_especialidad=None):
         
         # Campos de la tabla
         self.id_medico = id_medico
@@ -15,6 +15,7 @@ class Medico:
         self.dni = dni
         self.calle = calle
         self.numero_calle = numero_calle
+        self.id_barrio = id_barrio
         self.email = email
         self.telefono = telefono
         self.id_especialidad = id_especialidad
