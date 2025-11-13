@@ -1,5 +1,5 @@
 class ObraSocial:
-    def __init__(self, id_obra_social, nombre):
+    def __init__(self, nombre, id_obra_social=None):
         self.id_obra_social = id_obra_social
         self.nombre = nombre
     
