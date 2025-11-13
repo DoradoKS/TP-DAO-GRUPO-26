@@ -4,6 +4,8 @@ import random
 from Backend.BDD.Conexion import get_conexion
 from Backend.Model.Turno import Turno
 from Backend.DAO.UsuarioDAO import UsuarioDAO
+from Backend.DAO.FranjaHorariaDAO import FranjaHorariaDAO
+import calendar
 from datetime import datetime, timedelta
 
 class TurnoDAO:
@@ -33,6 +35,14 @@ class TurnoDAO:
                 return None, "Formato de fecha_hora inválido."
 
         fin = inicio + timedelta(minutes=30)
+        # --- NUEVA VALIDACIÓN: FRONTAL DE LA TRANSACCIÓN (FRANJA LABORAL) ---
+        dia_semana_py = inicio.weekday() + 1 # Monday=0, so add 1 (1=Lunes)
+
+        # Llama al nuevo DAO para verificar si el médico trabaja en ese slot
+        if not FranjaHorariaDAO().validar_franja_laboral(turno.id_medico, dia_semana_py, inicio, fin):
+            print("El médico no trabaja en ese horario o la hora solicitada está fuera de su franja laboral.")
+            return None
+        # ---------------------------------------------------------------------
 
         conn = None
         try:
@@ -178,6 +188,14 @@ class TurnoDAO:
                 return False
 
         fin = inicio + timedelta(minutes=30)
+        # --- NUEVA VALIDACIÓN: FRONTAL DE LA TRANSACCIÓN (FRANJA LABORAL) ---
+        dia_semana_py = inicio.weekday() + 1 # Monday=0, so add 1 (1=Lunes)
+
+        # Llama al nuevo DAO para verificar si el médico trabaja en ese slot
+        if not FranjaHorariaDAO().validar_franja_laboral(turno.id_medico, dia_semana_py, inicio, fin):
+            print("El médico no trabaja en ese horario o la hora solicitada está fuera de su franja laboral.")
+            return None
+        # ---------------------------------------------------------------------
 
         conn = None
         try:
@@ -420,6 +438,72 @@ class TurnoDAO:
             return cursor.fetchall()
         except sqlite3.Error as e:
             print(f"Error al obtener resumen asistencia por mes: {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
+# --- NUEVO MÉTODO CRUCIAL: CÁLCULO DE DISPONIBILIDAD ---
+
+    def calcular_horarios_disponibles(self, id_medico, fecha):
+        """
+        Calcula los slots libres (30 min) combinando franjas laborales y turnos ocupados.
+        Retorna una lista de strings con los horarios disponibles ('HH:MM').
+        """
+        DURACION_MINUTOS = 30
+        
+        try:
+            # Convertir la fecha solicitada a día de la semana (1-7)
+            fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
+            dia_semana_py = fecha_dt.weekday() + 1 # Lunes=1
+        except ValueError:
+            print("Formato de fecha de entrada inválido. Use YYYY-MM-DD.")
+            return [] # Retorna lista vacía si la fecha es mala
+
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            
+            # 1. Obtener Franjas de Trabajo (Las "Franjas Largas")
+            sql_franja = "SELECT hora_inicio, hora_fin FROM FranjaHoraria WHERE id_medico = ? AND dia_semana = ?"
+            cursor.execute(sql_franja, (id_medico, dia_semana_py))
+            franjas_trabajo = cursor.fetchall()
+            
+            if not franjas_trabajo:
+                 print(f"Debug: No se encontraron franjas laborales para el médico {id_medico} el día {dia_semana_py}.")
+                 return [] # El médico no trabaja ese día
+            
+            # 2. Obtener Horarios Reservados (Las "Excepciones")
+            sql_reservados = "SELECT strftime('%H:%M', fecha_hora) FROM Turno WHERE id_medico = ? AND DATE(fecha_hora) = ?"
+            cursor.execute(sql_reservados, (id_medico, fecha))
+            # Usamos un 'set' para que la búsqueda sea ultra-rápida
+            turnos_reservados = {row[0] for row in cursor.fetchall()} 
+            
+            horarios_libres = []
+            
+            # 3. Calcular Slots Libres (Lógica Python)
+            for inicio_str, fin_str in franjas_trabajo:
+                
+                # Convertimos los strings de hora a objetos datetime para poder sumarles tiempo
+                hora_actual = datetime.strptime(f"{fecha} {inicio_str}", "%Y-%m-%d %H:%M")
+                hora_fin = datetime.strptime(f"{fecha} {fin_str}", "%Y-%m-%d %H:%M")
+                
+                # Iteramos cada slot de 30 minutos
+                while hora_actual < hora_fin:
+                    slot_inicio_str = hora_actual.strftime('%H:%M')
+                    
+                    # Si el slot NO está en la lista de reservados, lo agregamos
+                    if slot_inicio_str not in turnos_reservados:
+                        horarios_libres.append(slot_inicio_str)
+                        
+                    # Avanzamos al siguiente slot
+                    hora_actual += timedelta(minutes=DURACION_MINUTOS) 
+                    
+            print(f"Debug: Horarios libres encontrados: {horarios_libres}")
+            return horarios_libres
+
+        except sqlite3.Error as e:
+            print(f"Error al calcular disponibilidad: {e}")
             return []
         finally:
             if conn: conn.close()

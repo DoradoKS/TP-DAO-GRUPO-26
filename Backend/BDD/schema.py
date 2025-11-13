@@ -133,6 +133,17 @@ CREATE TABLE IF NOT EXISTS Receta (
     FOREIGN KEY (estado) REFERENCES Estado(id_estado)
 );
 """
+SQL_CREAR_TABLA_FRANJA_HORARIA = """
+CREATE TABLE IF NOT EXISTS FranjaHoraria (
+    id_franja INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_medico INTEGER NOT NULL,
+    dia_semana INTEGER NOT NULL,  -- 1=Lunes, 2=Martes, etc.
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    FOREIGN KEY (id_medico) REFERENCES Medico(id_medico),
+    UNIQUE (id_medico, dia_semana, hora_inicio)
+);
+"""
 
 SQL_INSERTAR_OBRAS_SOCIALES_DEFAULT = """
 INSERT OR IGNORE INTO ObraSocial (id_obra_social, nombre) VALUES
@@ -159,6 +170,7 @@ SENTENCIAS_CREACION = [
     SQL_CREAR_TABLA_TURNO,
     SQL_CREAR_TABLA_HISTORIAL,
     SQL_CREAR_TABLA_RECETA,
+    SQL_CREAR_TABLA_FRANJA_HORARIA,
     SQL_INSERTAR_OBRAS_SOCIALES_DEFAULT,
     SQL_INSERTAR_BARRIOS_DEFAULT
 ]

@@ -4,6 +4,7 @@ from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.DAO.BarrioDAO import BarrioDAO
 from Backend.Model.Medico import Medico
+from Backend.GUI.panel_horarios import PanelHorarios
 
 class GestionMedicos(tk.Toplevel):
     def __init__(self, parent, usuario="admin"):
@@ -64,6 +65,11 @@ class GestionMedicos(tk.Toplevel):
 
         self.baja_button = ttk.Button(button_frame, text="Eliminar Seleccionado", command=self.baja_medico)
         self.baja_button.pack(side="left", padx=10)
+        
+        self.btn_gestionar_horarios = ttk.Button(button_frame, 
+                                                 text="Gestionar Horarios", 
+                                                 command=self.abrir_panel_horarios)
+        self.btn_gestionar_horarios.pack(side="left", padx=10)
         
         tree_frame = tk.Frame(main_frame, bg="#333333")
         tree_frame.pack(padx=10, pady=10, fill="both", expand=True)
@@ -194,3 +200,19 @@ class GestionMedicos(tk.Toplevel):
             self.cargar_medicos()
         else:
             messagebox.showerror("Error", mensaje)
+
+    def abrir_panel_horarios(self):
+
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Advertencia", "Seleccione un médico de la lista.")
+            return
+
+        # Obtenemos los datos del médico desde el TreeView
+        item_data = self.tree.item(selected_item[0])
+        id_medico = item_data['values'][0]
+        nombre_medico = item_data['values'][1] # O el índice donde esté el nombre
+
+        # Creamos e iniciamos la nueva ventana
+        panel = PanelHorarios(self, id_medico, nombre_medico)
+        panel.grab_set() # Esto "congela" la ventana de médicos
