@@ -151,13 +151,10 @@ class PacienteDAO:
             fila = cursor.fetchone()
             if fila:
                 return Paciente(
-                    id_paciente=fila[0],
-                    id_barrio=fila[1],
-                    usuario=fila[2],
-                    nombre=fila[3],
-                    apellido=fila[4],
-                    telefono=fila[5],
-                    email=fila[6],
+                    id_paciente=fila[0], id_barrio=fila[1], usuario=fila[2], nombre=fila[3], 
+                    apellido=fila[4], fecha_nacimiento=fila[5], tipo_dni=fila[6], dni=fila[7], 
+                    email=fila[8], telefono=fila[9], id_obra_social=fila[10], calle=fila[11], 
+                    numero_calle=fila[12]
                 )
             return None
         except sqlite3.Error as e:
@@ -167,7 +164,6 @@ class PacienteDAO:
             if conn:
                 conn.close()
 
-            
     def obtener_paciente_por_usuario(self, usuario):
         conn = None
         try:
@@ -183,5 +179,57 @@ class PacienteDAO:
         except sqlite3.Error as e:
             print(f"Error al obtener paciente por usuario: {e}")
             return None
+        finally:
+            if conn: conn.close()
+            
+    def obtener_pacientes_con_detalles(self):
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            SELECT p.id_paciente, p.usuario, p.nombre, p.apellido, p.tipo_dni, p.dni, 
+                   p.fecha_nacimiento, o.nombre, b.nombre, p.calle, p.numero_calle, p.email, p.telefono
+            FROM Paciente p
+            LEFT JOIN ObraSocial o ON p.id_obra_social = o.id_obra_social
+            LEFT JOIN Barrio b ON p.id_barrio = b.id_barrio
+            ORDER BY p.apellido, p.nombre
+            """
+            cursor.execute(sql)
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Error al obtener pacientes con detalles: {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
+    def buscar_pacientes(self, apellido=None, dni=None):
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            SELECT p.id_paciente, p.usuario, p.nombre, p.apellido, p.tipo_dni, p.dni, 
+                   p.fecha_nacimiento, o.nombre, b.nombre, p.calle, p.numero_calle, p.email, p.telefono
+            FROM Paciente p
+            LEFT JOIN ObraSocial o ON p.id_obra_social = o.id_obra_social
+            LEFT JOIN Barrio b ON p.id_barrio = b.id_barrio
+            WHERE 1=1
+            """
+            params = []
+            if apellido:
+                sql += " AND p.apellido LIKE ?"
+                params.append(f"%{apellido}%")
+            if dni:
+                sql += " AND p.dni LIKE ?"
+                params.append(f"%{dni}%")
+            
+            sql += " ORDER BY p.apellido, p.nombre"
+            
+            cursor.execute(sql, params)
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Error al buscar pacientes: {e}")
+            return []
         finally:
             if conn: conn.close()

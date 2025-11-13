@@ -75,7 +75,6 @@ class MedicoDAO:
             conn = get_conexion()
             cursor = conn.cursor()
             
-            # Verificar unicidad de DNI, matrícula y usuario (excluyendo el registro actual)
             cursor.execute("SELECT id_medico FROM Medico WHERE dni = ? AND id_medico != ?", (medico.dni, medico.id_medico))
             if cursor.fetchone():
                 return False, "Error: El DNI ya pertenece a otro médico."
@@ -198,5 +197,58 @@ class MedicoDAO:
         except sqlite3.Error as e:
             print(f"Error al obtener médico por usuario: {e}")
             return None
+        finally:
+            if conn: conn.close()
+
+    def obtener_medicos_con_especialidad(self):
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            SELECT m.id_medico, m.usuario, m.matricula, m.nombre, m.apellido, m.tipo_dni, m.dni, 
+                   m.calle, m.numero_calle, m.email, m.telefono, e.nombre 
+            FROM Medico m
+            LEFT JOIN Especialidad e ON m.id_especialidad = e.id_especialidad
+            ORDER BY m.id_medico
+            """
+            cursor.execute(sql)
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Error al obtener médicos con especialidad: {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
+    def buscar_medicos(self, especialidad=None, apellido=None, dni=None):
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            SELECT m.id_medico, m.usuario, m.matricula, m.nombre, m.apellido, m.tipo_dni, m.dni, 
+                   m.calle, m.numero_calle, m.email, m.telefono, e.nombre 
+            FROM Medico m
+            LEFT JOIN Especialidad e ON m.id_especialidad = e.id_especialidad
+            WHERE 1=1
+            """
+            params = []
+            if especialidad:
+                sql += " AND e.nombre LIKE ?"
+                params.append(f"%{especialidad}%")
+            if apellido:
+                sql += " AND m.apellido LIKE ?"
+                params.append(f"%{apellido}%")
+            if dni:
+                sql += " AND m.dni LIKE ?"
+                params.append(f"%{dni}%")
+            
+            sql += " ORDER BY m.id_medico"
+            
+            cursor.execute(sql, params)
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Error al buscar médicos: {e}")
+            return []
         finally:
             if conn: conn.close()

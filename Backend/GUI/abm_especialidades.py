@@ -9,26 +9,28 @@ class GestionEspecialidades(tk.Toplevel):
         super().__init__(parent)
         self.title("Gestión de Especialidades (Modificar / Baja)")
         self.geometry("800x500")
+        self.configure(bg="#333333")
         self.usuario = usuario
 
         self.create_widgets()
         self.cargar_especialidades()
 
     def create_widgets(self):
-        # Frame para los campos de edición
-        form_frame = ttk.LabelFrame(self, text="Datos de la Especialidad Seleccionada")
+        main_frame = tk.Frame(self, bg="#333333")
+        main_frame.pack(expand=True, fill="both")
+
+        form_frame = tk.LabelFrame(main_frame, text="Datos de la Especialidad Seleccionada", bg="#333333", fg="white", padx=10, pady=10)
         form_frame.pack(padx=10, pady=10, fill="x")
 
-        ttk.Label(form_frame, text="Nombre:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        tk.Label(form_frame, text="Nombre:", bg="#333333", fg="white").grid(row=0, column=0, padx=5, pady=5, sticky="e")
         self.nombre_entry = ttk.Entry(form_frame, width=40)
         self.nombre_entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        ttk.Label(form_frame, text="Descripción:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        tk.Label(form_frame, text="Descripción:", bg="#333333", fg="white").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.descripcion_entry = ttk.Entry(form_frame, width=40)
         self.descripcion_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
-        # Frame para los botones de acción
-        button_frame = ttk.Frame(self)
+        button_frame = tk.Frame(main_frame, bg="#333333")
         button_frame.pack(padx=10, pady=5, fill="x")
 
         self.modificacion_button = ttk.Button(button_frame, text="Guardar Modificación", command=self.modificacion_especialidad)
@@ -37,11 +39,14 @@ class GestionEspecialidades(tk.Toplevel):
         self.baja_button = ttk.Button(button_frame, text="Eliminar Seleccionada", command=self.baja_especialidad)
         self.baja_button.pack(side="left", padx=10)
         
-        # Frame para la grilla
-        tree_frame = ttk.Frame(self)
+        tree_frame = tk.Frame(main_frame, bg="#333333")
         tree_frame.pack(padx=10, pady=10, fill="both", expand=True)
         
-        ttk.Label(tree_frame, text="Seleccione una especialidad para modificarla o eliminarla:").pack(anchor="w")
+        tk.Label(tree_frame, text="Seleccione una especialidad para modificarla o eliminarla:", bg="#333333", fg="white").pack(anchor="w")
+
+        style = ttk.Style()
+        style.configure("Treeview", background="#DDDDDD", foreground="black", fieldbackground="#DDDDDD")
+        style.configure("Treeview.Heading", background="#CCCCCC", foreground="black")
 
         self.tree = ttk.Treeview(tree_frame, columns=("id", "nombre", "descripcion"), show="headings")
         self.tree.heading("id", text="ID")
@@ -54,7 +59,6 @@ class GestionEspecialidades(tk.Toplevel):
 
         self.tree.pack(fill="both", expand=True, side="left")
         
-        # Scrollbar para la grilla
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")

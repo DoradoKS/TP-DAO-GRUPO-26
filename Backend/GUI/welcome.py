@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-from Backend.BDD.Conexion import inicializar_bdd
 from Backend.DAO.UsuarioDAO import UsuarioDAO
 from Backend.Model.Usuario import Usuario
 from Backend.GUI.login import LoginWindow
+from Backend.BDD.Conexion import get_conexion # Importar get_conexion
 
 class WelcomeScreen(tk.Tk):
     def __init__(self):
@@ -87,8 +87,13 @@ class WelcomeScreen(tk.Tk):
 
     def setup_database(self):
         try:
-            inicializar_bdd()
-            return True, "Base de datos inicializada."
+            # Simplemente intentar obtener una conexión es suficiente para crear la BDD
+            conn = get_conexion()
+            if conn:
+                conn.close()
+                return True, "Base de datos inicializada."
+            else:
+                return False, "No se pudo conectar a la base de datos."
         except Exception as e:
             return False, str(e)
 
@@ -96,8 +101,8 @@ class WelcomeScreen(tk.Tk):
         try:
             usuario_dao = UsuarioDAO()
             if not usuario_dao.obtener_usuario("admin"):
-                admin = Usuario(usuario="admin", contrasenia="admin", rol="Administrador")
-                usuario_dao.crear_usuario(admin)
+                # La creación de usuario ahora se maneja en el DAO
+                usuario_dao.crear_usuario("admin", "admin", "Administrador")
                 return True, "Usuario 'admin' creado."
             else:
                 return True, "Usuario 'admin' ya existe."

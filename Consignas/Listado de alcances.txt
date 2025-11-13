@@ -1,0 +1,58 @@
+1. Gestión de Pacientes:
+Registro, modificación, consulta y eliminación de pacientes.
+Asociación de cada paciente a un usuario del sistema (inicio de sesión).
+Visualización de datos personales, historial médico y turnos.
+Búsqueda de pacientes por id, apellido o dni.
+
+2. Gestión de Médicos:
+Alta, baja, consulta y modificación de médicos.
+Posibilidad de búsqueda de médicos por especialidad o apellido.
+Asociación de cada médico a un usuario del sistema (inicio de sesión).
+
+3. Gestión de Especialidades:
+Alta, baja y consulta de especialidades médicas.
+Búsqueda por nombre o id
+
+4. Gestión de Turnos:
+Registro de turnos.
+Cancelación de turnos.
+Validación de superposición de horarios (un médico no puede tener dos turnos en el mismo horario y un paciente tampoco).
+Posibilidad de consultar turnos por médico, paciente, especialidad, fecha
+Envío de recordatorio de turno por email.
+
+5. Gestión de Consultorios
+Alta, baja modificación y consulta de consultorios.
+Control de su disponibilidad para la asignación de turnos.
+
+6. Gestión de Obras Sociales
+Alta, baja, modificación y consulta de obras sociales.
+
+7. Gestión de Recetas
+Emisión de recetas electrónicas vinculadas a un turno.
+Visualización de recetas por rango de fechas, por médico o por paciente.
+
+8. Historial Clínico
+Registro de diagnósticos y observaciones médicas por paciente.
+Consulta del historial médico completo de cada paciente (por parte del médico o del propio paciente).
+
+9. Gestión de Usuarios y Roles
+Cada paciente cuenta con un usuario y contraseña para iniciar sesión en el sistema.
+Cada médico cuenta con un usuario y contraseña para iniciar sesión en el sistema.
+Posibilidad de distintos roles:
+Paciente: puede solicitar, cancelar y consultar turnos. Puede consultar su historial médico.
+Médico: puede visualizar sus turnos, emitir recetas y consultar y/o actualizar historiales.
+Administrador: Puede asignar turnos, cancelar turnos, consultar turnos, visualizar los turnos de los médicos, visualizar historiales y consultar y/o generar reporte
+
+10. Reportes y Estadísticas
+Listado de turnos por médico en un periodo.
+Cantidad de turnos por especialidad por mes.
+Cantidad de pacientes atendidos en un rango de fechas
+Reporte de cantidad de turnos atendidos, ausentes y cancelados por día.
+Gráficos de asistencia vs inasistencia por mes.
+
+11. Rol Administrador
+Crear, modificar y eliminar médicos, pacientes, obras sociales, consultorios y especialidades.
+Asignar usuarios y roles.
+Consultar reportes globales (por médico, especialidad, asistencia, etc.).
+Otorgar o cancelar turnos.
+Visualización de la agenda del médico.
