@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+
 # Imports absolutos desde Backend
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
@@ -7,7 +8,9 @@ from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.Model.Turno import Turno
 from Backend.Validaciones.validaciones_turnos import validar_fecha, validar_hora
+from tkcalendar import DateEntry  # <<--- AÑADIDO
 from datetime import datetime, timedelta
+
 
 class ABMTurnos(tk.Toplevel):
     def __init__(self, parent, rol, usuario):
@@ -38,18 +41,31 @@ class ABMTurnos(tk.Toplevel):
         self.medico_combo = ttk.Combobox(form_frame, width=30)
         self.medico_combo.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
+        # ----------- FECHA CON CALENDARIO -------------
         ttk.Label(form_frame, text="Fecha (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_entry = ttk.Entry(form_frame)
+        self.fecha_entry = DateEntry(
+            form_frame,
+            width=18,
+            date_pattern="yyyy-mm-dd",
+            background="darkblue",
+            foreground="white",
+            borderwidth=2
+        )
         self.fecha_entry.grid(row=3, column=1, padx=5, pady=5, sticky="w")
-        # Botón para mostrar horarios disponibles según médico y fecha
-        self.mostrar_horarios_btn = ttk.Button(form_frame, text="Mostrar horarios disponibles", command=self.mostrar_horarios_disponibles)
+
+        self.mostrar_horarios_btn = ttk.Button(
+            form_frame, 
+            text="Mostrar horarios disponibles", 
+            command=self.mostrar_horarios_disponibles
+        )
         self.mostrar_horarios_btn.grid(row=3, column=2, padx=5, pady=5, sticky="w")
+        # ------------------------------------------------
 
         ttk.Label(form_frame, text="Hora (HH:MM):").grid(row=4, column=0, padx=5, pady=5, sticky="e")
         self.hora_entry = ttk.Entry(form_frame)
         self.hora_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
 
-        # Lista de horarios disponibles
+        # Lista de horarios
         horarios_frame = ttk.Frame(self)
         horarios_frame.pack(padx=10, pady=5, fill="x")
         ttk.Label(horarios_frame, text="Horarios disponibles:").pack(anchor="w")
@@ -77,6 +93,8 @@ class ABMTurnos(tk.Toplevel):
         self.tree.heading("hora", text="Hora")
         self.tree.pack(padx=10, pady=10, fill="both", expand=True)
 
+
+    # ==================== RESTO IGUAL ====================
     def cargar_turnos(self):
         for i in self.tree.get_children():
             self.tree.delete(i)
@@ -86,7 +104,6 @@ class ABMTurnos(tk.Toplevel):
         self.medico_dao = MedicoDAO()
         self.especialidad_dao = EspecialidadDAO()
 
-        # Asegurar que `turnos` está inicializado en caso de roles no contemplados
         turnos = []
         if self.rol == "Administrador":
             turnos = self.turno_dao.obtener_todos_los_turnos()
@@ -148,7 +165,7 @@ class ABMTurnos(tk.Toplevel):
     def solicitar_turno(self):
         paciente_nombre_completo = self.paciente_combo.get()
         medico_nombre_completo = self.medico_combo.get()
-        fecha = self.fecha_entry.get()
+        fecha = self.fecha_entry.get()   # << Calendar da el formato correcto
         hora = self.hora_entry.get()
 
         if not all([paciente_nombre_completo, medico_nombre_completo, fecha, hora]):
@@ -156,11 +173,11 @@ class ABMTurnos(tk.Toplevel):
             return
 
         if not validar_fecha(fecha):
-            messagebox.showerror("Error de formato", "La fecha debe tener el formato YYYY-MM-DD.")
+            messagebox.showerror("Error", "La fecha debe tener el formato YYYY-MM-DD.")
             return
         
         if not validar_hora(hora):
-            messagebox.showerror("Error de formato", "La hora debe tener el formato HH:MM.")
+            messagebox.showerror("Error", "La hora debe tener el formato HH:MM.")
             return
 
         id_paciente = None
@@ -176,7 +193,6 @@ class ABMTurnos(tk.Toplevel):
                     id_medico = m.id_medico
                     break
         
-        # Si hay una selección en la lista de horarios, usarla; si no, usar la hora ingresada
         selected_indices = self.slots_listbox.curselection()
         if selected_indices:
             hora_seleccionada = self.slots_listbox.get(selected_indices[0])
@@ -184,22 +200,19 @@ class ABMTurnos(tk.Toplevel):
             hora_seleccionada = hora
 
         if not validar_hora(hora_seleccionada):
-            messagebox.showerror("Error de formato", "La hora debe tener el formato HH:MM.")
+            messagebox.showerror("Error", "La hora debe tener el formato HH:MM.")
             return
 
         fecha_hora = f"{fecha} {hora_seleccionada}:00"
-
         turno = Turno(id_paciente=id_paciente, id_medico=id_medico, fecha_hora=fecha_hora)
         
         turno_dao = TurnoDAO()
         if turno_dao.crear_turno(turno, self.usuario):
             messagebox.showinfo("Turno solicitado", "El turno ha sido solicitado exitosamente.")
-            # refrescar lista de turnos y horarios
             self.cargar_turnos()
-            # actualizar horarios disponibles para la misma fecha
             self.mostrar_horarios_disponibles()
         else:
-            messagebox.showerror("Error", "No se pudo solicitar el turno. Verifique la consola para más detalles.")
+            messagebox.showerror("Error", "No se pudo solicitar el turno.")
 
 
     def cancelar_turno(self):
@@ -214,15 +227,14 @@ class ABMTurnos(tk.Toplevel):
             
             turno_dao = TurnoDAO()
             if turno_dao.eliminar_turno(id_turno, self.usuario):
-                messagebox.showinfo("Turno cancelado", "El turno ha sido cancelado exitosamente.")
+                messagebox.showinfo("Turno cancelado", "Turno cancelado exitosamente.")
                 self.cargar_turnos()
-                # actualizar horarios disponibles si estaban visibles
                 self.mostrar_horarios_disponibles()
             else:
                 messagebox.showerror("Error", "No se pudo cancelar el turno.")
 
+
     def generar_franjas(self):
-        """Genera las franjas horarias de 30 minutos entre 08:00 y 14:00 inclusive."""
         franjas = []
         inicio = datetime.strptime("08:00", "%H:%M")
         fin = datetime.strptime("14:00", "%H:%M")
@@ -232,37 +244,31 @@ class ABMTurnos(tk.Toplevel):
             actual += timedelta(minutes=30)
         return franjas
 
+
     def mostrar_horarios_disponibles(self):
         fecha = self.fecha_entry.get()
         medico_nombre_completo = self.medico_combo.get()
 
-        if not fecha:
-            messagebox.showwarning("Advertencia", "Ingrese una fecha primero.")
-            return
-
         if not validar_fecha(fecha):
-            messagebox.showerror("Error de formato", "La fecha debe tener el formato YYYY-MM-DD.")
+            messagebox.showerror("Error de formato", "Fecha inválida.")
             return
 
-        # validar día hábil (lunes=0, domingo=6)
         try:
             fecha_obj = datetime.strptime(fecha, "%Y-%m-%d").date()
-        except ValueError:
-            messagebox.showerror("Error de fecha", "Fecha inválida.")
+        except:
+            messagebox.showerror("Error", "Fecha inválida.")
             return
 
         if fecha_obj.weekday() >= 5:
-            messagebox.showwarning("Día no hábil", "Seleccione un día entre lunes y viernes.")
+            messagebox.showwarning("Día no hábil", "Solo lunes a viernes.")
             return
 
-        # validar límite de 1 mes (30 días)
         hoy = datetime.today().date()
         max_fecha = hoy + timedelta(days=30)
         if fecha_obj < hoy or fecha_obj > max_fecha:
-            messagebox.showwarning("Rango de fechas", f"Se pueden sacar turnos sólo entre {hoy} y {max_fecha}.")
+            messagebox.showwarning("Rango inválido", f"Entre {hoy} y {max_fecha}.")
             return
 
-        # obtener id_medico seleccionado
         id_medico = None
         if hasattr(self, 'medicos'):
             for m in self.medicos:
@@ -271,24 +277,16 @@ class ABMTurnos(tk.Toplevel):
                     break
 
         if not id_medico:
-            messagebox.showwarning("Advertencia", "Seleccione un médico para ver horarios.")
+            messagebox.showwarning("Advertencia", "Seleccione médico.")
             return
 
-        # obtener turnos ya ocupados para ese médico y fecha
         turno_dao = TurnoDAO()
         ocupados = turno_dao.obtener_turnos_por_medico_y_fecha(id_medico, fecha)
-        horas_ocupadas = set()
-        for t in ocupados:
-            try:
-                h = t.fecha_hora.split(" ")[1][:5]
-                horas_ocupadas.add(h)
-            except Exception:
-                continue
+        horas_ocupadas = { t.fecha_hora.split(" ")[1][:5] for t in ocupados }
 
         franjas = self.generar_franjas()
-        disponibles = [f for f in franjas if f not in horas_ocupadas]
+        disponibles = [h for h in franjas if h not in horas_ocupadas]
 
-        # poblar listbox
         self.slots_listbox.delete(0, tk.END)
         for h in disponibles:
             self.slots_listbox.insert(tk.END, h)

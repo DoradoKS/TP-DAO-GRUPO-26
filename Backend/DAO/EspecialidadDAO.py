@@ -42,6 +42,23 @@ class EspecialidadDAO:
         finally:
             if conn:
                 conn.close()
+                
+    def obtener_todas_las_especialidades(self):
+        """Devuelve una lista con todas las especialidades registradas."""
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Especialidad ORDER BY nombre")
+            filas = cursor.fetchall()
+            return [Especialidad(id_especialidad=f[0], nombre=f[1], descripcion=f[2]) for f in filas]
+        except sqlite3.Error as e:
+            print(f"Error al obtener todas las especialidades: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
 
     def buscar_por_nombre_exacto(self, nombre):
         """Busca una especialidad por su nombre exacto (case-insensitive)."""

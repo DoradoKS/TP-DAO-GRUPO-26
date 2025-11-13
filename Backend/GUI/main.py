@@ -68,7 +68,7 @@ class MainMenu(tk.Tk):
 
         border_frame_salir = tk.Frame(button_container, bg="#FFD700", bd=2)
         border_frame_salir.pack(pady=20)
-        salir_btn = tk.Button(border_frame_salir, text="Salir", command=self.quit, **button_properties)
+        salir_btn = tk.Button(border_frame_salir, text="Salir", command=self.destroy, **button_properties)
         salir_btn.pack()
         salir_btn.bind("<Enter>", self.on_enter)
         salir_btn.bind("<Leave>", self.on_leave)

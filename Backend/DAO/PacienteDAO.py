@@ -150,15 +150,23 @@ class PacienteDAO:
             cursor.execute("SELECT * FROM Paciente WHERE id_paciente = ?", (id_paciente,))
             fila = cursor.fetchone()
             if fila:
-                return Paciente(id_paciente=f[0], id_barrio=f[1], usuario=f[2], nombre=f[3], apellido=f[4],
-                                fecha_nacimiento=f[5], tipo_dni=f[6], dni=f[7], email=f[8], telefono=f[9],
-                                id_obra_social=f[10], calle=f[11], numero_calle=f[12])
+                return Paciente(
+                    id_paciente=fila[0],
+                    id_barrio=fila[1],
+                    usuario=fila[2],
+                    nombre=fila[3],
+                    apellido=fila[4],
+                    telefono=fila[5],
+                    email=fila[6],
+                )
             return None
         except sqlite3.Error as e:
-            print(f"Error al obtener paciente por ID: {e}")
+            print("Error al buscar paciente:", e)
             return None
         finally:
-            if conn: conn.close()
+            if conn:
+                conn.close()
+
             
     def obtener_paciente_por_usuario(self, usuario):
         conn = None
