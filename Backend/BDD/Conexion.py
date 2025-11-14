@@ -71,6 +71,14 @@ def get_conexion():
                 conn.commit()
             if cambios_turno:
                 print("Migración aplicada: columnas agregadas a Turno:", ", ".join(n for n, _ in cambios_turno))
+
+            # Asegurar valores por defecto en tabla Estado (Vigente/Vencida)
+            try:
+                cur.execute("INSERT OR IGNORE INTO Estado (id_estado, nombre) VALUES (1, 'Vigente'), (2, 'Vencida');")
+                conn.commit()
+            except sqlite3.Error:
+                # Si la tabla Estado no existe aún, se omitirá
+                pass
         except sqlite3.Error as e:
             # No bloquear la conexión si falla la migración; solo informar
             print(f"Advertencia: no se pudo aplicar migraciones: {e}")

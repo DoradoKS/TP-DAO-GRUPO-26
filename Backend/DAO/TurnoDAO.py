@@ -8,6 +8,21 @@ from Backend.DAO.FranjaHorariaDAO import FranjaHorariaDAO
 import calendar
 from datetime import datetime, timedelta
 
+def _add_one_month(dt_date):
+    """Return a date one month after dt_date, preserving day when possible.
+    If the next month has fewer days, use the month's last day."""
+    year = dt_date.year
+    month = dt_date.month + 1
+    if month == 13:
+        month = 1
+        year += 1
+    day = dt_date.day
+    last_day = calendar.monthrange(year, month)[1]
+    if day > last_day:
+        day = last_day
+    from datetime import date
+    return date(year, month, day)
+
 class TurnoDAO:
     """
     DAO para la entidad Turno.
@@ -33,6 +48,12 @@ class TurnoDAO:
                 inicio = datetime.strptime(str(turno.fecha_hora), "%Y-%m-%d %H:%M")
             except ValueError:
                 return None, "Formato de fecha_hora inválido."
+
+        # Validación: no permitir turnos con fecha mayor a 1 mes desde hoy
+        hoy = datetime.now().date()
+        fecha_max = _add_one_month(hoy)
+        if inicio.date() > fecha_max:
+            return None, f"No se puede reservar un turno con más de un mes de anticipación. Fecha máxima permitida: {fecha_max.strftime('%Y-%m-%d')}"
 
         fin = inicio + timedelta(minutes=30)
         # --- NUEVA VALIDACIÓN: FRONTAL DE LA TRANSACCIÓN (FRANJA LABORAL) ---
@@ -186,6 +207,13 @@ class TurnoDAO:
             except ValueError:
                 print("Formato de fecha_hora inválido.")
                 return False
+
+        # Validación: no permitir turnos con fecha mayor a 1 mes desde hoy
+        hoy = datetime.now().date()
+        fecha_max = _add_one_month(hoy)
+        if inicio.date() > fecha_max:
+            print(f"No se puede reservar un turno con más de un mes de anticipación. Fecha máxima permitida: {fecha_max.strftime('%Y-%m-%d')}")
+            return False
 
         fin = inicio + timedelta(minutes=30)
         # --- NUEVA VALIDACIÓN: FRONTAL DE LA TRANSACCIÓN (FRANJA LABORAL) ---

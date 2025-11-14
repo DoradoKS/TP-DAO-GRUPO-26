@@ -54,25 +54,32 @@ class MainMenu(tk.Tk):
             "pady": 15
         }
 
-        # --- Fila 1 (ahora en la fila 1 de la grilla) ---
+        # --- Fila 1 (administración) ---
         btn_pacientes = self.create_button(main_frame, "Gestionar Pacientes", self.open_panel_pacientes, button_properties)
-        btn_pacientes.grid(row=1, column=0, padx=10, pady=20)
-
         btn_medicos = self.create_button(main_frame, "Gestionar Médicos", self.open_panel_medicos, button_properties)
-        btn_medicos.grid(row=1, column=1, padx=10, pady=20)
-
         btn_especialidades = self.create_button(main_frame, "Gestionar Especialidades", self.open_panel_especialidades, button_properties)
-        btn_especialidades.grid(row=1, column=2, padx=10, pady=20)
 
-        # --- Fila 2 (ahora en la fila 2 de la grilla) ---
+        # --- Fila 2 (otros) ---
         btn_consultorios = self.create_button(main_frame, "Gestionar Consultorios", self.open_gestion_consultorios, button_properties)
-        btn_consultorios.grid(row=2, column=0, padx=10, pady=20)
-
         btn_turnos = self.create_button(main_frame, "Gestionar Turnos", self.open_abm_turnos, button_properties)
-        btn_turnos.grid(row=2, column=1, padx=10, pady=20)
-
         btn_obras_sociales = self.create_button(main_frame, "Gestionar Obras Sociales", self.open_gestion_obras, button_properties)
-        btn_obras_sociales.grid(row=2, column=2, padx=10, pady=20)
+
+        # Mostrar botones según rol
+        if self.rol == "Administrador":
+            # Admin: vea todo
+            btn_pacientes.grid(row=1, column=0, padx=10, pady=20)
+            btn_medicos.grid(row=1, column=1, padx=10, pady=20)
+            btn_especialidades.grid(row=1, column=2, padx=10, pady=20)
+
+            btn_consultorios.grid(row=2, column=0, padx=10, pady=20)
+            btn_turnos.grid(row=2, column=1, padx=10, pady=20)
+            btn_obras_sociales.grid(row=2, column=2, padx=10, pady=20)
+        elif self.rol == "Medico":
+            # Médicos solo ven Turnos (y pueden acceder a historial desde la fila 3)
+            btn_turnos.grid(row=1, column=1, padx=10, pady=20)
+        else:
+            # Paciente u otros: solo Turnos
+            btn_turnos.grid(row=1, column=1, padx=10, pady=20)
 
         # --- Fila 3 (ahora en la fila 3 de la grilla) ---
         frame_fila_3 = tk.Frame(main_frame, bg="#333333")
@@ -80,9 +87,19 @@ class MainMenu(tk.Tk):
 
         btn_historial = self.create_button(frame_fila_3, "Consultar Historial Clínico", self.open_consulta_historial, button_properties)
         btn_historial.pack(side="left", padx=10)
+        # Reportes solo para administradores
+        if self.rol == "Administrador":
+            btn_reportes = self.create_button(frame_fila_3, "Ver Reportes", self.open_reportes, button_properties)
+            btn_reportes.pack(side="left", padx=10)
 
-        btn_reportes = self.create_button(frame_fila_3, "Ver Reportes", self.open_reportes, button_properties)
-        btn_reportes.pack(side="left", padx=10)
+        # Para pacientes, agregar acceso rápido a 'Mis Recetas'
+        if self.rol == "Paciente":
+            try:
+                from .panel_recetas import PanelRecetas
+                btn_recetas = self.create_button(frame_fila_3, "Mis Recetas", lambda: PanelRecetas(self, self.usuario).grab_set(), button_properties)
+                btn_recetas.pack(side="left", padx=10)
+            except Exception:
+                pass
         
         # --- Fila 5 (Salir, separado por la fila 4) ---
         btn_salir = self.create_button(main_frame, "Salir", self.destroy, button_properties)
@@ -103,25 +120,43 @@ class MainMenu(tk.Tk):
         e.widget['background'] = '#CCCCCC'
 
     def open_panel_pacientes(self):
+        if self.rol != "Administrador":
+            messagebox.showerror("Permiso denegado", "Solo administradores pueden gestionar pacientes.")
+            return
         PanelPacientes(self).grab_set()
 
     def open_panel_medicos(self):
+        if self.rol != "Administrador":
+            messagebox.showerror("Permiso denegado", "Solo administradores pueden gestionar médicos.")
+            return
         PanelMedicos(self).grab_set()
 
     def open_panel_especialidades(self):
+        if self.rol != "Administrador":
+            messagebox.showerror("Permiso denegado", "Solo administradores pueden gestionar especialidades.")
+            return
         PanelEspecialidades(self).grab_set()
 
     def open_abm_turnos(self):
         ABMTurnos(self, self.rol, self.usuario).grab_set()
 
     def open_reportes(self):
+        if self.rol != "Administrador":
+            messagebox.showerror("Permiso denegado", "Solo administradores pueden ver reportes.")
+            return
         Reportes(self).grab_set()
 
     def open_consulta_historial(self):
         ConsultaHistorial(self, self.usuario, self.rol).grab_set()
 
     def open_gestion_consultorios(self):
+        if self.rol != "Administrador":
+            messagebox.showerror("Permiso denegado", "Solo administradores pueden gestionar consultorios.")
+            return
         GestionConsultorios(self, self.usuario).grab_set()
 
     def open_gestion_obras(self):
+        if self.rol != "Administrador":
+            messagebox.showerror("Permiso denegado", "Solo administradores pueden gestionar obras sociales.")
+            return
         GestionObrasSociales(self, self.usuario).grab_set()

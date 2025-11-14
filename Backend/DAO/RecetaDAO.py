@@ -19,12 +19,15 @@ class RecetaDAO:
         if rol not in ["Medico", "Administrador"]:
             print("Permiso denegado: solo Medico o Administrador pueden crear recetas.")
             return None
-        # Validaciones previas
+        # Preparar datos para las validaciones (aceptar ambos nombres de atributo)
+        fecha_val = getattr(receta, 'fecha_emision', None) or getattr(receta, 'fecha', None)
+        detalles_val = getattr(receta, 'detalles', None) or getattr(receta, 'descripcion', None)
+
         datos = {
             'id_paciente': receta.id_paciente,
             'id_medico': receta.id_medico,
-            'fecha_emision': receta.fecha_emision,
-            'detalles': receta.detalles
+            'fecha_emision': fecha_val,
+            'detalles': detalles_val
         }
 
         es_valido, errores = Validaciones.validar_receta_completa(datos)
@@ -41,13 +44,19 @@ class RecetaDAO:
 
             sql = """
             INSERT INTO Receta (
-                id_paciente, id_medico, fecha_emision, detalles
-            ) VALUES (?, ?, ?, ?)
+                id_paciente, id_medico, id_turno, estado, fecha, descripcion
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """
-            
+
+            id_turno_val = getattr(receta, 'id_turno', None)
+            estado_val = getattr(receta, 'id_estado', None) or getattr(receta, 'estado', None) or 1
             valores = (
-                receta.id_paciente, receta.id_medico,
-                receta.fecha_emision, receta.detalles
+                receta.id_paciente,
+                receta.id_medico,
+                id_turno_val,
+                estado_val,
+                fecha_val,
+                detalles_val
             )
 
             cursor.execute(sql, valores)
@@ -79,12 +88,14 @@ class RecetaDAO:
             filas = cursor.fetchall()
 
             for fila in filas:
+                # Columns: id_receta, id_paciente, id_medico, id_turno, estado, fecha, descripcion
                 receta = Receta(
                     id_receta=fila[0],
                     id_paciente=fila[1],
                     id_medico=fila[2],
-                    fecha_emision=fila[3],
-                    detalles=fila[4]
+                    id_estado=fila[4],
+                    fecha=fila[5],
+                    descripcion=fila[6]
                 )
                 recetas.append(receta)
 
@@ -116,8 +127,9 @@ class RecetaDAO:
                     id_receta=fila[0],
                     id_paciente=fila[1],
                     id_medico=fila[2],
-                    fecha_emision=fila[3],
-                    detalles=fila[4]
+                    id_estado=fila[4],
+                    fecha=fila[5],
+                    descripcion=fila[6]
                 )
                 recetas.append(receta)
 
@@ -190,11 +202,14 @@ class RecetaDAO:
             print("Permiso denegado: solo Medico o Administrador pueden actualizar recetas.")
             return False
         # Validaciones previas
+        fecha_val = getattr(receta, 'fecha_emision', None) or getattr(receta, 'fecha', None)
+        detalles_val = getattr(receta, 'detalles', None) or getattr(receta, 'descripcion', None)
+
         datos = {
             'id_paciente': receta.id_paciente,
             'id_medico': receta.id_medico,
-            'fecha_emision': receta.fecha_emision,
-            'detalles': receta.detalles
+            'fecha_emision': fecha_val,
+            'detalles': detalles_val
         }
 
         es_valido, errores = Validaciones.validar_receta_completa(datos)
@@ -211,15 +226,19 @@ class RecetaDAO:
 
             sql = """
             UPDATE Receta
-            SET id_paciente = ?, id_medico = ?, fecha_emision = ?, detalles = ?
+            SET id_paciente = ?, id_medico = ?, id_turno = ?, estado = ?, fecha = ?, descripcion = ?
             WHERE id_receta = ?
             """
-            
+
+            id_turno_val = getattr(receta, 'id_turno', None)
+            estado_val = getattr(receta, 'id_estado', None) or getattr(receta, 'estado', None) or 1
             valores = (
                 receta.id_paciente,
                 receta.id_medico,
-                receta.fecha_emision,
-                receta.detalles,
+                id_turno_val,
+                estado_val,
+                fecha_val,
+                detalles_val,
                 receta.id_receta
             )
 
@@ -260,8 +279,9 @@ class RecetaDAO:
                     id_receta=fila[0],
                     id_paciente=fila[1],
                     id_medico=fila[2],
-                    fecha_emision=fila[3],
-                    detalles=fila[4]
+                    id_estado=fila[4],
+                    fecha=fila[5],
+                    descripcion=fila[6]
                 )
                 return receta
             else:
@@ -344,8 +364,9 @@ class RecetaDAO:
                     id_receta=fila[0],
                     id_paciente=fila[1],
                     id_medico=fila[2],
-                    fecha_emision=fila[3],
-                    detalles=fila[4]
+                    id_estado=fila[4],
+                    fecha=fila[5],
+                    descripcion=fila[6]
                 )
                 recetas.append(receta)
 
@@ -368,7 +389,7 @@ class RecetaDAO:
             conn = get_conexion()
             cursor = conn.cursor()
 
-            sql = "SELECT * FROM Receta WHERE DATE(fecha_emision) = DATE(?)"
+            sql = "SELECT * FROM Receta WHERE DATE(fecha) = DATE(?)"
             cursor.execute(sql, (fecha,))
             filas = cursor.fetchall()
 
@@ -377,8 +398,9 @@ class RecetaDAO:
                     id_receta=fila[0],
                     id_paciente=fila[1],
                     id_medico=fila[2],
-                    fecha_emision=fila[3],
-                    detalles=fila[4]
+                    id_estado=fila[4],
+                    fecha=fila[5],
+                    descripcion=fila[6]
                 )
                 recetas.append(receta)
 

@@ -6,6 +6,8 @@ from Backend.DAO.BarrioDAO import BarrioDAO
 from Backend.Model.Medico import Medico
 from Backend.DAO.UsuarioDAO import UsuarioDAO
 from Backend.Validaciones.validaciones import Validaciones
+from Backend.DAO.FranjaHorariaDAO import FranjaHorariaDAO
+from Backend.Model.FranjaHoraria import FranjaHoraria
 
 class AltaMedico(tk.Toplevel):
     def __init__(self, parent, usuario="admin"):
@@ -54,8 +56,27 @@ class AltaMedico(tk.Toplevel):
                     self.especialidad_combo = ttk.Combobox(main_frame, width=38, state="readonly")
                     self.especialidad_combo.grid(row=i, column=1, padx=10, pady=5)
 
+        # --- Horarios: permitir seleccionar múltiples días y horario de atención ---
+        row_h = len(fields)
+        ttk.Label(main_frame, text="Días de atención (seleccione varios):", font=("Arial", 12)).grid(row=row_h, column=0, padx=10, pady=5, sticky="e")
+        self.listbox_dias = tk.Listbox(main_frame, selectmode='multiple', height=7, exportselection=False)
+        dias_vals = ["1 - Lunes", "2 - Martes", "3 - Miércoles", "4 - Jueves", "5 - Viernes", "6 - Sábado", "7 - Domingo"]
+        for d in dias_vals:
+            self.listbox_dias.insert(tk.END, d)
+        self.listbox_dias.grid(row=row_h, column=1, padx=10, pady=5, sticky="w")
+
+        row_h += 1
+        ttk.Label(main_frame, text="Hora Inicio (HH:MM):", font=("Arial", 12)).grid(row=row_h, column=0, padx=10, pady=5, sticky="e")
+        self.entry_h_inicio = ttk.Entry(main_frame, width=20)
+        self.entry_h_inicio.grid(row=row_h, column=1, padx=10, pady=5, sticky="w")
+
+        row_h += 1
+        ttk.Label(main_frame, text="Hora Fin (HH:MM):", font=("Arial", 12)).grid(row=row_h, column=0, padx=10, pady=5, sticky="e")
+        self.entry_h_fin = ttk.Entry(main_frame, width=20)
+        self.entry_h_fin.grid(row=row_h, column=1, padx=10, pady=5, sticky="w")
+
         guardar_button = ttk.Button(main_frame, text="Guardar", command=self.guardar_medico)
-        guardar_button.grid(row=len(fields), column=0, columnspan=2, pady=20)
+        guardar_button.grid(row=row_h+1, column=0, columnspan=2, pady=20)
 
     def cargar_comboboxes(self):
         self.especialidades = EspecialidadDAO().obtener_todas_las_especialidades()
@@ -135,6 +156,37 @@ class AltaMedico(tk.Toplevel):
 
         id_creado, mensaje = MedicoDAO().crear_medico(medico, self.usuario)
         if id_creado:
+            # Si se creó el médico, insertar franjas si fueron seleccionadas
+            h_dao = FranjaHorariaDAO()
+            selec = self.listbox_dias.curselection() if hasattr(self, 'listbox_dias') else []
+            inicio = self.entry_h_inicio.get().strip() if hasattr(self, 'entry_h_inicio') else ""
+            fin = self.entry_h_fin.get().strip() if hasattr(self, 'entry_h_fin') else ""
+
+            # Validar formato horario simple HH:MM si hay selección
+            if selec:
+                import re
+                patron = r"^[0-2][0-9]:[0-5][0-9]$"
+                if not re.match(patron, inicio) or not re.match(patron, fin):
+                    # Rollback: eliminar médico y usuario creados para mantener consistencia
+                    try:
+                        # eliminar medico creado
+                        from Backend.DAO.MedicoDAO import MedicoDAO as _MDAO
+                        _MDAO().eliminar_medico(id_creado, self.usuario)
+                    except Exception:
+                        pass
+                    try:
+                        usuario_dao.eliminar_usuario(usuario)
+                    except Exception:
+                        pass
+                    messagebox.showerror("Error", "Formato de hora inválido. Use HH:MM.")
+                    return
+
+                for idx in selec:
+                    dia_text = self.listbox_dias.get(idx)
+                    dia_num = int(dia_text.split(" - ")[0])
+                    fr = FranjaHoraria(id_medico=id_creado, dia_semana=dia_num, hora_inicio=inicio, hora_fin=fin)
+                    h_dao.insertar(fr)
+
             messagebox.showinfo("Éxito", f"{mensaje} (ID: {id_creado})")
             self.destroy()
         else:

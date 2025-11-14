@@ -9,7 +9,23 @@ from Backend.GUI.consulta_historial import ConsultaHistorial
 from Backend.GUI.registro_historial import RegistroHistorial
 from Backend.Model.Turno import Turno
 from tkcalendar import DateEntry
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+import calendar
+
+
+def _add_one_month(dt_date):
+    """Return a date one month after dt_date, preserving day when possible.
+    If the next month has fewer days, use the month's last day."""
+    year = dt_date.year
+    month = dt_date.month + 1
+    if month == 13:
+        month = 1
+        year += 1
+    day = dt_date.day
+    last_day = calendar.monthrange(year, month)[1]
+    if day > last_day:
+        day = last_day
+    return date(year, month, day)
 
 class ABMTurnos(tk.Toplevel):
     def __init__(self, parent, rol, usuario):
@@ -48,7 +64,10 @@ class ABMTurnos(tk.Toplevel):
         self.consultorio_combo = None
 
         tk.Label(form_frame, text="Fecha:", bg="#333333", fg="white").grid(row=4, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_entry = DateEntry(form_frame, width=20, date_pattern="yyyy/mm/dd", state="readonly")
+        # Limitar fecha máxima a 1 mes desde hoy
+        hoy = date.today()
+        self.fecha_max = _add_one_month(hoy)
+        self.fecha_entry = DateEntry(form_frame, width=20, date_pattern="yyyy-mm-dd", state="readonly", maxdate=self.fecha_max)
         self.fecha_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
 
         self.mostrar_horarios_btn = ttk.Button(form_frame, text="Mostrar horarios disponibles", command=self.mostrar_horarios_disponibles)
@@ -81,6 +100,11 @@ class ABMTurnos(tk.Toplevel):
         self.btn_inasist = ttk.Button(button_frame, text="Marcar Inasistencia", command=self.marcar_inasistencia)
         self.btn_asist.pack(side="right", padx=5)
         self.btn_inasist.pack(side="right", padx=5)
+
+        # Botón para que el médico genere una receta al atender (solo visible para rol Medico)
+        self.btn_generar_receta = ttk.Button(button_frame, text="Generar Receta", command=self.generar_receta)
+        if self.rol == "Medico":
+            self.btn_generar_receta.pack(side="right", padx=5)
 
         style = ttk.Style()
         style.configure("Treeview", background="#DDDDDD", foreground="black", fieldbackground="#DDDDDD")
@@ -193,6 +217,12 @@ class ABMTurnos(tk.Toplevel):
             messagebox.showerror("Error de fecha", "Fecha inválida. Seleccione una fecha del calendario.")
             return
 
+        # Validar límite de 1 mes
+        if fecha_obj > getattr(self, 'fecha_max', fecha_obj):
+            messagebox.showerror("Fecha fuera de rango", f"No se pueden solicitar turnos con más de un mes de anticipación. Fecha máxima: {self.fecha_max.strftime('%Y-%m-%d')}")
+            self.slots_listbox.delete(0, tk.END)
+            return
+
         if fecha_obj.weekday() >= 5:
             messagebox.showwarning("Día no hábil", "Seleccione un día entre lunes y viernes.")
             self.slots_listbox.delete(0, tk.END) 
@@ -223,6 +253,10 @@ class ABMTurnos(tk.Toplevel):
     def solicitar_turno(self):
         fecha_obj = self.fecha_entry.get_date()
         fecha = fecha_obj.strftime("%Y-%m-%d")
+        # Validar límite de 1 mes antes de continuar
+        if fecha_obj > getattr(self, 'fecha_max', fecha_obj):
+            messagebox.showerror("Fecha fuera de rango", f"No se pueden solicitar turnos con más de un mes de anticipación. Fecha máxima: {self.fecha_max.strftime('%Y-%m-%d')}")
+            return
         pac_nombre = self.paciente_combo.get()
         med_nombre = self.medico_combo.get()
         if not (fecha and pac_nombre and med_nombre):
@@ -315,3 +349,54 @@ class ABMTurnos(tk.Toplevel):
         ok, msg = TurnoDAO().marcar_asistencia(id_turno, False, self.usuario)
         if ok: messagebox.showinfo("OK", msg)
         else: messagebox.showerror("Error", msg)
+
+    def generar_receta(self):
+        """Abre un diálogo simple para que el médico ingrese la descripción y genere una receta para el turno seleccionado."""
+        if self.rol != "Medico":
+            return
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showwarning("Advertencia", "Seleccione un turno para generar la receta.")
+            return
+        item = self.tree.item(sel[0])
+        id_turno = item['values'][0]
+        turno = TurnoDAO().obtener_turno_por_id(id_turno)
+        if not turno:
+            messagebox.showerror("Error", "No se pudo cargar el turno seleccionado.")
+            return
+
+        # Crear ventana modal sencilla
+        top = tk.Toplevel(self)
+        top.title("Generar Receta")
+        top.geometry("500x350")
+
+        ttk.Label(top, text="Descripción / Medicamentos:").pack(padx=10, pady=8, anchor='w')
+        text = tk.Text(top, width=60, height=10)
+        text.pack(padx=10, pady=5)
+
+        def on_guardar():
+            detalles = text.get('1.0', 'end-1c').strip()
+            if not detalles:
+                if not messagebox.askyesno("Confirmar", "La receta está vacía. Desea crearla igual?"):
+                    return
+            # Construir objeto receta con atributos que espera RecetaDAO
+            class _R: pass
+            r = _R()
+            r.id_paciente = turno.id_paciente
+            r.id_medico = turno.id_medico
+            # Validaciones actuales esperan formato YYYY-MM-DD
+            r.fecha_emision = datetime.now().strftime("%Y-%m-%d")
+            r.detalles = detalles
+
+            from Backend.DAO.RecetaDAO import RecetaDAO
+            receta_id = RecetaDAO().crear_receta(r, self.usuario)
+            if receta_id:
+                messagebox.showinfo("Éxito", f"Receta creada (ID: {receta_id})")
+                top.destroy()
+            else:
+                messagebox.showerror("Error", "No se pudo crear la receta. Revise la consola para más detalles.")
+
+        btn_frame = ttk.Frame(top)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="Guardar Receta", command=on_guardar).pack(side='left', padx=8)
+        ttk.Button(btn_frame, text="Cancelar", command=top.destroy).pack(side='left', padx=8)

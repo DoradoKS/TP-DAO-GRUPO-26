@@ -96,3 +96,23 @@ class FranjaHorariaDAO:
             return False
         finally:
             if conn: conn.close()
+
+    def actualizar(self, id_franja, dia_semana, hora_inicio, hora_fin):
+        """Actualiza una franja horaria existente."""
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            UPDATE FranjaHoraria SET dia_semana = ?, hora_inicio = ?, hora_fin = ?
+            WHERE id_franja = ?
+            """
+            cursor.execute(sql, (dia_semana, hora_inicio, hora_fin, id_franja))
+            conn.commit()
+            return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            if conn: conn.rollback()
+            print(f"Error al actualizar franja horaria: {e}")
+            return False
+        finally:
+            if conn: conn.close()
