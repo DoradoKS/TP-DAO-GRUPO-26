@@ -6,7 +6,7 @@ from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.Model.Medico import Medico
 from Backend.DAO.UsuarioDAO import UsuarioDAO
-from Backend.GUI.panel_horarios import PanelHorarios # Importar PanelHorarios
+from GUI.panel_horarios import PanelHorarios # Importar PanelHorarios
 
 class AltaMedico(tk.Toplevel):
     def __init__(self, parent, usuario="admin"):

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from Backend.DAO.UsuarioDAO import UsuarioDAO
 from Backend.Model.Usuario import Usuario
-from Backend.GUI.login import LoginWindow
+from GUI.login import LoginWindow
 from Backend.BDD.Conexion import get_conexion # Importar get_conexion
 
 class WelcomeScreen(tk.Tk):

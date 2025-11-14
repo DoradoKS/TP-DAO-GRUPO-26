@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from Backend.DAO.UsuarioDAO import UsuarioDAO
-from Backend.GUI.main import MainMenu
+from GUI.main import MainMenu
 
 class LoginWindow(tk.Tk):
     def __init__(self):

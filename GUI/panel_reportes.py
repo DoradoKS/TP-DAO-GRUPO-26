@@ -3,8 +3,15 @@ from tkinter import ttk, messagebox
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+# Matplotlib is optional; import lazily and handle missing module gracefully
+try:
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    HAS_MATPLOTLIB = True
+except Exception:
+    Figure = None
+    FigureCanvasTkAgg = None
+    HAS_MATPLOTLIB = False
 
 # Importamos el calendario
 from tkcalendar import DateEntry
@@ -321,6 +328,11 @@ class PanelReportes(tk.Toplevel):
 
     def generar_reporte_4(self):
         
+        if not HAS_MATPLOTLIB:
+            messagebox.showwarning("Matplotlib no instalado",
+                       "La librería 'matplotlib' no está instalada.\nInstale con:\n\n  pip install matplotlib\n\npara ver el gráfico.",
+                       parent=self)
+            return
         self.label_titulo_reporte.config(text="Reporte: Gráfico de Asistencias")
         # Ocultar la tabla (TreeView)
         self.tree.pack_forget() 

@@ -5,7 +5,7 @@ import pathlib
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-from Backend.GUI.welcome import WelcomeScreen
+from GUI.welcome import WelcomeScreen
 from Backend.notifications import start_scheduler
 
 if __name__ == "__main__":

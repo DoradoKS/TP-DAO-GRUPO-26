@@ -5,8 +5,8 @@ from Backend.DAO.PacienteDAO import PacienteDAO
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.DAO.ConsultorioDAO import ConsultorioDAO
-from Backend.GUI.consulta_historial import ConsultaHistorial
-from Backend.GUI.registro_historial import RegistroHistorial
+from GUI.consulta_historial import ConsultaHistorial
+from GUI.registro_historial import RegistroHistorial
 from Backend.Model.Turno import Turno
 from tkcalendar import DateEntry
 from datetime import datetime, date
