@@ -22,6 +22,21 @@ class UsuarioDAO:
         finally:
             if conn: conn.close()
 
+    def eliminar_usuario(self, usuario):
+        """Elimina un usuario por nombre. Retorna True si eliminó, False si no existe."""
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Usuario WHERE usuario = ?", (usuario,))
+            conn.commit()
+            return cursor.rowcount > 0
+        except sqlite3.Error:
+            if conn: conn.rollback()
+            return False
+        finally:
+            if conn: conn.close()
+
     def obtener_rol(self, usuario):
         conn = get_conexion()
         cursor = conn.cursor()

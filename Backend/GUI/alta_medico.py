@@ -5,6 +5,7 @@ from Backend.DAO.EspecialidadDAO import EspecialidadDAO
 from Backend.DAO.BarrioDAO import BarrioDAO
 from Backend.Model.Medico import Medico
 from Backend.DAO.UsuarioDAO import UsuarioDAO
+from Backend.Validaciones.validaciones import Validaciones
 
 class AltaMedico(tk.Toplevel):
     def __init__(self, parent, usuario="admin"):
@@ -96,6 +97,29 @@ class AltaMedico(tk.Toplevel):
             messagebox.showerror("Error", "El número de calle debe ser un entero.")
             return
 
+        # Validar matrícula numérica antes de continuar
+        try:
+            matricula_int = int(matricula)
+        except ValueError:
+            messagebox.showerror("Error", "La matrícula debe ser un número entero.")
+            return
+
+        # Validaciones completas antes de crear el usuario para evitar usuarios huérfanos
+        datos_validacion = {
+            'usuario': usuario,
+            'matricula': matricula_int,
+            'nombre': nombre,
+            'apellido': apellido,
+            'tipo_dni': tipo_dni,
+            'dni': dni,
+            'email': email,
+            'telefono': telefono
+        }
+        es_valido, errores = Validaciones.validar_medico_completo(datos_validacion)
+        if not es_valido:
+            messagebox.showerror("Errores de validación", "\n".join(errores))
+            return
+
         usuario_dao = UsuarioDAO()
         creado, msg_usuario = usuario_dao.crear_usuario(usuario, contraseña, "Medico")
         if not creado:
@@ -103,7 +127,7 @@ class AltaMedico(tk.Toplevel):
             return
 
         medico = Medico(
-            usuario=usuario, nombre=nombre, apellido=apellido, matricula=matricula,
+            usuario=usuario, nombre=nombre, apellido=apellido, matricula=matricula_int,
             tipo_dni=tipo_dni, dni=dni, email=email, telefono=telefono,
             id_especialidad=id_especialidad, calle=calle, numero_calle=numero_calle_int,
             id_barrio=id_barrio
@@ -114,4 +138,9 @@ class AltaMedico(tk.Toplevel):
             messagebox.showinfo("Éxito", f"{mensaje} (ID: {id_creado})")
             self.destroy()
         else:
+            # Si falló la creación del médico, eliminar el usuario creado para evitar inconsistencias
+            try:
+                usuario_dao.eliminar_usuario(usuario)
+            except Exception:
+                pass
             messagebox.showerror("Error al crear médico", mensaje)

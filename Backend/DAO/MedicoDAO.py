@@ -120,13 +120,25 @@ class MedicoDAO:
             conn = get_conexion()
             cursor = conn.cursor()
             
-            TurnoDAO().eliminar_turnos_por_medico(id_medico)
+            # Eliminar todas las entidades relacionadas con el médico
+            # 1. Eliminar franjas horarias
+            cursor.execute("DELETE FROM FranjaHoraria WHERE id_medico = ?", (id_medico,))
             
+            # 2. Eliminar historiales clínicos
+            cursor.execute("DELETE FROM Historial WHERE id_medico = ?", (id_medico,))
+            
+            # 3. Eliminar recetas
+            cursor.execute("DELETE FROM Receta WHERE id_medico = ?", (id_medico,))
+            
+            # 4. Eliminar turnos
+            cursor.execute("DELETE FROM Turno WHERE id_medico = ?", (id_medico,))
+            
+            # 5. Finalmente, eliminar el médico
             cursor.execute("DELETE FROM Medico WHERE id_medico = ?", (id_medico,))
             conn.commit()
             
             if cursor.rowcount > 0:
-                return True, "Médico eliminado exitosamente."
+                return True, "Médico y toda su información relacionada eliminados exitosamente."
             else:
                 return False, "No se encontró el médico."
         except sqlite3.Error as e:

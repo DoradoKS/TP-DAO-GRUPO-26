@@ -115,12 +115,20 @@ class PacienteDAO:
             if rol not in ["Paciente", "Administrador"]:
                 return False, "Permiso denegado."
 
-            turno_dao = TurnoDAO()
-            turno_dao.eliminar_turnos_por_paciente(id_paciente)
-
+            # Eliminar todas las entidades relacionadas con el paciente
+            # 1. Eliminar historiales clínicos
+            cursor.execute("DELETE FROM Historial WHERE id_paciente = ?", (id_paciente,))
+            
+            # 2. Eliminar recetas
+            cursor.execute("DELETE FROM Receta WHERE id_paciente = ?", (id_paciente,))
+            
+            # 3. Eliminar turnos
+            cursor.execute("DELETE FROM Turno WHERE id_paciente = ?", (id_paciente,))
+            
+            # 4. Finalmente, eliminar el paciente
             cursor.execute("DELETE FROM Paciente WHERE id_paciente = ?", (id_paciente,))
             conn.commit()
-            return True, "Paciente eliminado exitosamente."
+            return True, "Paciente y toda su información relacionada eliminados exitosamente."
         except sqlite3.Error as e:
             if conn: conn.rollback()
             return False, f"Error de base de datos al eliminar: {e}"

@@ -31,7 +31,7 @@ class AltaPaciente(tk.Toplevel):
             ("Fecha Nacimiento:", "DateEntry"),  # Cambiado a DateEntry
             ("DNI:", "Entry"), ("Email:", "Entry"), ("Teléfono:", "Entry"),
             ("Calle:", "Entry"), ("Número:", "Entry"),
-            ("Tipo DNI:", "Combobox"), ("Obra Social:", "Combobox"), ("Barrio:", "Combobox")
+            ("Tipo DNI:", "Combobox"), ("Obra Social:", "Combobox"), ("Barrio:", "Entry")
         ]
 
         for i, field_info in enumerate(fields):
@@ -47,7 +47,7 @@ class AltaPaciente(tk.Toplevel):
                 self.entries[label_text] = entry
             
             elif widget_type == "DateEntry":
-                self.fecha_nac_entry = DateEntry(main_frame, width=33, date_pattern='yyyy/mm/dd', state="readonly")
+                self.fecha_nac_entry = DateEntry(main_frame, width=33, date_pattern='yyyy-mm-dd', state="readonly")
                 self.fecha_nac_entry.grid(row=i, column=1, padx=8, pady=5, sticky="w")
 
             elif widget_type == "Combobox":
@@ -57,9 +57,6 @@ class AltaPaciente(tk.Toplevel):
                 elif label_text == "Obra Social:":
                     self.obra_social_combo = ttk.Combobox(main_frame, width=33, state="readonly")
                     self.obra_social_combo.grid(row=i, column=1, padx=8, pady=5, sticky="w")
-                elif label_text == "Barrio:":
-                    self.barrio_combo = ttk.Combobox(main_frame, width=33, state="readonly")
-                    self.barrio_combo.grid(row=i, column=1, padx=8, pady=5, sticky="w")
 
         guardar_button = ttk.Button(self, text="Registrar Paciente", command=self.guardar_paciente)
         guardar_button.pack(pady=10)
@@ -69,9 +66,6 @@ class AltaPaciente(tk.Toplevel):
         self.obras_sociales = ObraSocialDAO().obtener_obra_social()
         self.obra_social_combo['values'] = [o.nombre for o in self.obras_sociales]
         if self.obras_sociales: self.obra_social_combo.current(0)
-        self.barrios = BarrioDAO().obtener_todos_los_barrios()
-        self.barrio_combo['values'] = [b.nombre for b in self.barrios]
-        if self.barrios: self.barrio_combo.current(0)
 
     def guardar_paciente(self):
         usuario = self.entries["Usuario:"].get().strip()
@@ -90,7 +84,7 @@ class AltaPaciente(tk.Toplevel):
             return
 
         try:
-            datetime.strptime(fecha_nac, "%Y/%m/%d")
+            datetime.strptime(fecha_nac, "%Y-%m-%d")
         except ValueError:
             messagebox.showerror("Error", "Fecha de nacimiento inválida.")
             return
@@ -98,23 +92,27 @@ class AltaPaciente(tk.Toplevel):
         tipo_dni_nombre = self.tipo_dni_combo.get()
         obra_social_nombre = self.obra_social_combo.get()
         id_obra_social = next((o.id_obra_social for o in self.obras_sociales if o.nombre == obra_social_nombre), None)
-        barrio_nombre = self.barrio_combo.get()
-        id_barrio = next((b.id_barrio for b in self.barrios if b.nombre == barrio_nombre), None)
-
-        if not all([tipo_dni_nombre, id_obra_social, id_barrio]):
-            messagebox.showerror("Error", "Debe seleccionar Tipo DNI, Obra Social y Barrio.")
+        barrio_nombre = self.entries["Barrio:"].get().strip()
+        
+        if not all([tipo_dni_nombre, id_obra_social, barrio_nombre]):
+            messagebox.showerror("Error", "Debe seleccionar Tipo DNI, Obra Social e ingresar el Barrio.")
             return
-
-        usuario_dao = UsuarioDAO()
-        ok_usuario, msg_usuario = usuario_dao.crear_usuario(usuario, contrasena, "Paciente")
-        if not ok_usuario:
-            messagebox.showerror("Error", msg_usuario)
-            return
-
+        
+        # Validar número de calle ANTES de crear el usuario
         try:
             numero_calle_int = int(numero_calle)
         except ValueError:
             messagebox.showerror("Error", "El número de calle debe ser un entero.")
+            return
+        
+        # Obtener o crear el barrio
+        id_barrio = BarrioDAO().obtener_o_crear_barrio(barrio_nombre)
+
+        # Ahora sí crear el usuario, después de todas las validaciones
+        usuario_dao = UsuarioDAO()
+        ok_usuario, msg_usuario = usuario_dao.crear_usuario(usuario, contrasena, "Paciente")
+        if not ok_usuario:
+            messagebox.showerror("Error", msg_usuario)
             return
 
         paciente = Paciente(
