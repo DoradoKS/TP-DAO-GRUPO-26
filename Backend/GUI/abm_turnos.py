@@ -9,7 +9,7 @@ from Backend.GUI.consulta_historial import ConsultaHistorial
 from Backend.GUI.registro_historial import RegistroHistorial
 from Backend.Model.Turno import Turno
 from tkcalendar import DateEntry
-from datetime import datetime, timedelta, date
+from datetime import datetime, date
 import calendar
 
 
@@ -64,7 +64,6 @@ class ABMTurnos(tk.Toplevel):
         self.consultorio_combo = None
 
         tk.Label(form_frame, text="Fecha:", bg="#333333", fg="white").grid(row=4, column=0, padx=5, pady=5, sticky="e")
-        # Limitar fecha máxima a 1 mes desde hoy
         hoy = date.today()
         self.fecha_max = _add_one_month(hoy)
         self.fecha_entry = DateEntry(form_frame, width=20, date_pattern="yyyy-mm-dd", state="readonly", maxdate=self.fecha_max)
@@ -101,7 +100,6 @@ class ABMTurnos(tk.Toplevel):
         self.btn_asist.pack(side="right", padx=5)
         self.btn_inasist.pack(side="right", padx=5)
 
-        # Botón para que el médico genere una receta al atender (solo visible para rol Medico)
         self.btn_generar_receta = ttk.Button(button_frame, text="Generar Receta", command=self.generar_receta)
         if self.rol == "Medico":
             self.btn_generar_receta.pack(side="right", padx=5)
@@ -139,7 +137,7 @@ class ABMTurnos(tk.Toplevel):
                 if isinstance(child, ttk.Button) and child.cget("text") == "Solicitar Turno":
                     child.pack_forget()
         else:
-            for child in [self.btn_ver_hist, self.btn_reg_hist, self.btn_asist, self.btn_inasist]:
+            for child in [self.btn_ver_hist, self.btn_reg_hist, self.btn_asist, self.btn_inasist, self.btn_generar_receta]:
                 child.pack_forget()
 
     def cargar_combos(self):
@@ -223,11 +221,6 @@ class ABMTurnos(tk.Toplevel):
             self.slots_listbox.delete(0, tk.END)
             return
 
-        if fecha_obj.weekday() >= 5:
-            messagebox.showwarning("Día no hábil", "Seleccione un día entre lunes y viernes.")
-            self.slots_listbox.delete(0, tk.END) 
-            return
-        
         id_medico = None
         if hasattr(self, 'medicos'):
             for m in self.medicos:
@@ -257,18 +250,27 @@ class ABMTurnos(tk.Toplevel):
         if fecha_obj > getattr(self, 'fecha_max', fecha_obj):
             messagebox.showerror("Fecha fuera de rango", f"No se pueden solicitar turnos con más de un mes de anticipación. Fecha máxima: {self.fecha_max.strftime('%Y-%m-%d')}")
             return
+        
+        # --- NUEVA VALIDACIÓN: FECHA Y HORA ANTERIOR A LA ACTUAL ---
+        selected = self.slots_listbox.curselection()
+        if not selected:
+            messagebox.showerror("Error", "Seleccione un horario de la lista.")
+            return
+        hora_seleccionada = self.slots_listbox.get(selected[0])
+        
+        fecha_hora_seleccionada_str = f"{fecha} {hora_seleccionada}:00"
+        fecha_hora_seleccionada_dt = datetime.strptime(fecha_hora_seleccionada_str, "%Y-%m-%d %H:%M:%S")
+        
+        if fecha_hora_seleccionada_dt < datetime.now():
+            messagebox.showerror("Error de Fecha/Hora", "No puede elegir una fecha y/o hora anterior a la actual.")
+            return
+        # -----------------------------------------------------------
+
         pac_nombre = self.paciente_combo.get()
         med_nombre = self.medico_combo.get()
         if not (fecha and pac_nombre and med_nombre):
             messagebox.showerror("Error", "Complete todos los campos.")
             return
-
-        selected = self.slots_listbox.curselection()
-        if not selected:
-            messagebox.showerror("Error", "Seleccione un horario de la lista.")
-            return
-
-        hora_seleccionada = self.slots_listbox.get(selected[0])
 
         pac = next((p for p in self.pacientes if f"{p.nombre} {p.apellido}" == pac_nombre), None)
         med = next((m for m in getattr(self, "medicos", []) if f"{m.nombre} {m.apellido}" == med_nombre), None)

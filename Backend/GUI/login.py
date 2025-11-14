@@ -23,6 +23,9 @@ class LoginWindow(tk.Tk):
         self.geometry(f"{window_width}x{window_height}+{pos_x}+{pos_y}")
 
         self.create_widgets()
+        # self.usuario_entry.focus_set() # Eliminamos la llamada directa
+        self.after(100, self.usuario_entry.focus_set) # Retrasamos el focus_set
+        self.focus_force() # Forzar el foco a esta ventana
 
     def create_widgets(self):
         main_frame = ttk.Frame(self)

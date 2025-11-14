@@ -30,11 +30,11 @@ class FranjaHorariaDAO:
             cursor.execute(sql, (id_medico, dia_semana, hora_inicio_turno, hora_fin_turno))
 
             resultado = cursor.fetchone()
-            return resultado is not None # True si encontró una franja válida
+            return resultado is not None, "Franja laboral válida." if resultado else "El médico no trabaja en ese horario o la hora solicitada está fuera de su franja laboral."
 
         except sqlite3.Error as e:
             print(f"Error en validación de franja laboral: {e}")
-            return False 
+            return False, f"Error de base de datos al validar franja: {e}"
         finally:
             if conn: conn.close()
 
@@ -50,11 +50,11 @@ class FranjaHorariaDAO:
             valores = (franja.id_medico, franja.dia_semana, franja.hora_inicio, franja.hora_fin)
             cursor.execute(sql, valores)
             conn.commit()
-            return cursor.lastrowid
+            return cursor.lastrowid, "Franja horaria insertada exitosamente."
         except sqlite3.Error as e:
             if conn: conn.rollback()
             print(f"Error al insertar franja horaria: {e}")
-            return None
+            return None, f"Error de base de datos al insertar franja: {e}"
         finally:
             if conn: conn.close()
 
@@ -89,11 +89,11 @@ class FranjaHorariaDAO:
             sql = "DELETE FROM FranjaHoraria WHERE id_franja = ?"
             cursor.execute(sql, (id_franja,))
             conn.commit()
-            return cursor.rowcount > 0 # Retorna True si borró algo
+            return cursor.rowcount > 0, "Franja horaria eliminada exitosamente." if cursor.rowcount > 0 else "No se encontró la franja horaria."
         except sqlite3.Error as e:
             if conn: conn.rollback()
             print(f"Error al eliminar franja horaria: {e}")
-            return False
+            return False, f"Error de base de datos al eliminar franja: {e}"
         finally:
             if conn: conn.close()
 
@@ -109,10 +109,10 @@ class FranjaHorariaDAO:
             """
             cursor.execute(sql, (dia_semana, hora_inicio, hora_fin, id_franja))
             conn.commit()
-            return cursor.rowcount > 0
+            return cursor.rowcount > 0, "Franja horaria actualizada exitosamente." if cursor.rowcount > 0 else "No se encontró la franja horaria."
         except sqlite3.Error as e:
             if conn: conn.rollback()
             print(f"Error al actualizar franja horaria: {e}")
-            return False
+            return False, f"Error de base de datos al actualizar franja: {e}"
         finally:
             if conn: conn.close()

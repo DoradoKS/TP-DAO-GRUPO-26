@@ -17,6 +17,7 @@ def _add_one_month(dt_date):
         month = 1
         year += 1
     day = dt_date.day
+    import calendar
     last_day = calendar.monthrange(year, month)[1]
     if day > last_day:
         day = last_day
@@ -60,9 +61,10 @@ class TurnoDAO:
         dia_semana_py = inicio.weekday() + 1 # Monday=0, so add 1 (1=Lunes)
 
         # Llama al nuevo DAO para verificar si el médico trabaja en ese slot
-        if not FranjaHorariaDAO().validar_franja_laboral(turno.id_medico, dia_semana_py, inicio, fin):
-            print("El médico no trabaja en ese horario o la hora solicitada está fuera de su franja laboral.")
-            return None
+        franja_valida, franja_msg = FranjaHorariaDAO().validar_franja_laboral(turno.id_medico, dia_semana_py, inicio, fin)
+        if not franja_valida:
+            print(franja_msg) # Para debug
+            return None, franja_msg # Aseguramos que siempre devuelve una tupla
         # ---------------------------------------------------------------------
 
         conn = None
@@ -220,9 +222,10 @@ class TurnoDAO:
         dia_semana_py = inicio.weekday() + 1 # Monday=0, so add 1 (1=Lunes)
 
         # Llama al nuevo DAO para verificar si el médico trabaja en ese slot
-        if not FranjaHorariaDAO().validar_franja_laboral(turno.id_medico, dia_semana_py, inicio, fin):
-            print("El médico no trabaja en ese horario o la hora solicitada está fuera de su franja laboral.")
-            return None
+        franja_valida, franja_msg = FranjaHorariaDAO().validar_franja_laboral(turno.id_medico, dia_semana_py, inicio, fin)
+        if not franja_valida:
+            print(franja_msg) # Para debug
+            return False, franja_msg # Aseguramos que siempre devuelve una tupla
         # ---------------------------------------------------------------------
 
         conn = None

@@ -29,17 +29,18 @@ class PanelReportes(tk.Toplevel):
         
         # Estilo para las etiquetas
         style.configure("TLabel", background="#333333", foreground="white")
-        style.configure("Header.TLabel", background="#333333", foreground="white")
+        # Estilo corregido para el título del reporte: fondo oscuro, texto blanco
+        style.configure("Header.TLabel", background="#333333", foreground="white") 
         
         # Estilo para los botones de reporte
         style.configure("Report.TButton", 
                         background="#555555", 
-                        foreground="white", 
+                        foreground="black", # Cambiado a negro
                         font=("Arial", 10, "bold"),
                         padding=10)
         style.map("Report.TButton", 
                   background=[('active', '#777777')],
-                  foreground=[('active', 'white')])
+                  foreground=[('active', 'black')]) # Cambiado a negro
         # -----------------------------
 
         # --- DAOs ---

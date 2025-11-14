@@ -55,7 +55,7 @@ class HistorialDAO:
 
     def obtener_historial_por_paciente(self, id_paciente, usuario_actual):
         """
-        Obtiene todo el historial de un paciente.
+        Obtiene todo el historial de un paciente, incluyendo el nombre del médico.
         Accesible por el paciente mismo o por médicos.
         """
         rol = UsuarioDAO().obtener_rol(usuario_actual)
@@ -71,30 +71,36 @@ class HistorialDAO:
             return [], "Permiso denegado."
 
         conn = None
-        historiales = []
+        historiales_con_medico = []
         try:
             conn = get_conexion()
             cursor = conn.cursor()
+            
+            # Consulta con JOIN para obtener el nombre del médico
             cursor.execute(
                 """
-                SELECT id_historial, id_paciente, id_medico, fecha, diagnostico, observaciones
-                FROM Historial 
-                WHERE id_paciente = ? 
-                ORDER BY fecha DESC
+                SELECT H.fecha, M.nombre, M.apellido, H.diagnostico, H.observaciones
+                FROM Historial H
+                JOIN Medico M ON H.id_medico = M.id_medico
+                WHERE H.id_paciente = ? 
+                ORDER BY H.fecha DESC
                 """,
                 (id_paciente,)
             )
             
             for fila in cursor.fetchall():
-                historiales.append(Historial(
-                    id_historial=fila[0],
-                    id_paciente=fila[1],
-                    id_medico=fila[2],
-                    fecha=fila[3],
-                    diagnostico=fila[4],
-                    observaciones=fila[5]
-                ))
-            return historiales, "OK"
+                fecha = fila[0]
+                nombre_medico = f"{fila[1]} {fila[2]}"
+                diagnostico = fila[3]
+                observaciones = fila[4] # Aunque no se usa en la GUI, lo mantenemos por si acaso
+                
+                historiales_con_medico.append({
+                    "fecha": fecha,
+                    "medico": nombre_medico,
+                    "diagnostico": diagnostico,
+                    "observaciones": observaciones
+                })
+            return historiales_con_medico, "OK"
         except sqlite3.Error as e:
             print(f"Error al obtener historial: {e}")
             return [], f"Error: {e}"

@@ -8,6 +8,7 @@ from .consulta_historial import ConsultaHistorial
 from .abm_consultorios import GestionConsultorios
 from .abm_obras_sociales import GestionObrasSociales
 from .panel_reportes import PanelReportes
+from .panel_recetas import PanelRecetas # Importar PanelRecetas
 
 class MainMenu(tk.Tk):
     def __init__(self, rol, usuario):
@@ -35,15 +36,19 @@ class MainMenu(tk.Tk):
         main_frame = tk.Frame(self, bg="#333333")
         main_frame.pack(expand=True, fill="both", padx=20, pady=20)
         
-        # Configurar la grilla para que las columnas se centren
         main_frame.grid_columnconfigure(0, weight=1)
         main_frame.grid_columnconfigure(1, weight=1)
         main_frame.grid_columnconfigure(2, weight=1)
         
+        # Fila para el rol del usuario
+        # Usamos un solo Label para que el texto esté junto y se vea correctamente
+        rol_text = f"Su rol en el sistema es: {self.rol.upper()}"
+        tk.Label(main_frame, text=rol_text, font=("Arial", 12, "bold"), bg="#333333", fg="white").grid(row=0, column=0, columnspan=3, pady=(0, 5), sticky="w")
+        
         # Filas espaciadoras para empujar el contenido
-        main_frame.grid_rowconfigure(0, weight=1) # Espacio superior
-        main_frame.grid_rowconfigure(4, weight=2) # Espacio grande sobre el botón Salir
-        main_frame.grid_rowconfigure(6, weight=1) # Espacio inferior
+        main_frame.grid_rowconfigure(1, weight=1) # Espacio superior
+        main_frame.grid_rowconfigure(5, weight=2) # Espacio grande sobre el botón Salir
+        main_frame.grid_rowconfigure(7, weight=1) # Espacio inferior
 
         button_properties = {
             "font": ("Arial", 14),
@@ -67,23 +72,23 @@ class MainMenu(tk.Tk):
         # Mostrar botones según rol
         if self.rol == "Administrador":
             # Admin: vea todo
-            btn_pacientes.grid(row=1, column=0, padx=10, pady=20)
-            btn_medicos.grid(row=1, column=1, padx=10, pady=20)
-            btn_especialidades.grid(row=1, column=2, padx=10, pady=20)
+            btn_pacientes.grid(row=2, column=0, padx=10, pady=20)
+            btn_medicos.grid(row=2, column=1, padx=10, pady=20)
+            btn_especialidades.grid(row=2, column=2, padx=10, pady=20)
 
-            btn_consultorios.grid(row=2, column=0, padx=10, pady=20)
-            btn_turnos.grid(row=2, column=1, padx=10, pady=20)
-            btn_obras_sociales.grid(row=2, column=2, padx=10, pady=20)
+            btn_consultorios.grid(row=3, column=0, padx=10, pady=20)
+            btn_turnos.grid(row=3, column=1, padx=10, pady=20)
+            btn_obras_sociales.grid(row=3, column=2, padx=10, pady=20)
         elif self.rol == "Medico":
             # Médicos solo ven Turnos (y pueden acceder a historial desde la fila 3)
-            btn_turnos.grid(row=1, column=1, padx=10, pady=20)
+            btn_turnos.grid(row=2, column=1, padx=10, pady=20)
         else:
             # Paciente u otros: solo Turnos
-            btn_turnos.grid(row=1, column=1, padx=10, pady=20)
+            btn_turnos.grid(row=2, column=1, padx=10, pady=20)
 
-        # --- Fila 3 (ahora en la fila 3 de la grilla) ---
+        # --- Fila 3 (ahora en la fila 4 de la grilla) ---
         frame_fila_3 = tk.Frame(main_frame, bg="#333333")
-        frame_fila_3.grid(row=3, column=0, columnspan=3, pady=20)
+        frame_fila_3.grid(row=4, column=0, columnspan=3, pady=20)
 
         btn_historial = self.create_button(frame_fila_3, "Consultar Historial Clínico", self.open_consulta_historial, button_properties)
         btn_historial.pack(side="left", padx=10)
@@ -94,16 +99,12 @@ class MainMenu(tk.Tk):
 
         # Para pacientes, agregar acceso rápido a 'Mis Recetas'
         if self.rol == "Paciente":
-            try:
-                from .panel_recetas import PanelRecetas
-                btn_recetas = self.create_button(frame_fila_3, "Mis Recetas", lambda: PanelRecetas(self, self.usuario).grab_set(), button_properties)
-                btn_recetas.pack(side="left", padx=10)
-            except Exception:
-                pass
+            btn_recetas = self.create_button(frame_fila_3, "Mis Recetas", lambda: PanelRecetas(self, self.usuario).grab_set(), button_properties)
+            btn_recetas.pack(side="left", padx=10)
         
-        # --- Fila 5 (Salir, separado por la fila 4) ---
+        # --- Fila 6 (Salir, separado por la fila 5) ---
         btn_salir = self.create_button(main_frame, "Salir", self.destroy, button_properties)
-        btn_salir.grid(row=5, column=1, padx=10, pady=10)
+        btn_salir.grid(row=6, column=1, padx=10, pady=10)
 
     def create_button(self, parent, text, command, properties):
         border_frame = tk.Frame(parent, bg="#FFD700", bd=2)

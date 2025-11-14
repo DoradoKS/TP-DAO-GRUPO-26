@@ -15,13 +15,6 @@ class ConsultaPacientesScreen(tk.Toplevel):
         self.cargar_pacientes()
 
     def create_widgets(self):
-        style = ttk.Style(self)
-        style.configure("TLabel", background="#333333", foreground="white")
-        style.configure("TFrame", background="#333333")
-        style.configure("TButton", background="#CCCCCC", foreground="black")
-        style.configure("Treeview", background="#DDDDDD", foreground="black", fieldbackground="#DDDDDD")
-        style.configure("Treeview.Heading", background="#CCCCCC", foreground="black")
-
         main_frame = tk.Frame(self, bg="#333333")
         main_frame.pack(expand=True, fill="both", padx=10, pady=10)
 
@@ -32,11 +25,11 @@ class ConsultaPacientesScreen(tk.Toplevel):
         filter_fields_frame.pack(side="left")
 
         tk.Label(filter_fields_frame, text="Buscar por apellido:", bg="#333333", fg="white").grid(row=0, column=0, sticky="e", pady=2, padx=5)
-        self.apellido_entry = tk.Entry(filter_fields_frame, width=30)
+        self.apellido_entry = ttk.Entry(filter_fields_frame, width=30)
         self.apellido_entry.grid(row=0, column=1, sticky="w", pady=2)
 
         tk.Label(filter_fields_frame, text="Buscar por DNI:", bg="#333333", fg="white").grid(row=1, column=0, sticky="e", pady=2, padx=5)
-        self.dni_entry = tk.Entry(filter_fields_frame, width=30)
+        self.dni_entry = ttk.Entry(filter_fields_frame, width=30)
         self.dni_entry.grid(row=1, column=1, sticky="w", pady=2)
 
         button_frame = tk.Frame(search_frame, bg="#333333")
@@ -45,8 +38,12 @@ class ConsultaPacientesScreen(tk.Toplevel):
         search_button = ttk.Button(button_frame, text="Buscar", command=self.buscar_pacientes, width=20)
         search_button.pack()
         
-        tree_container = tk.Frame(main_frame)
+        tree_container = tk.Frame(main_frame, bg="#333333")
         tree_container.pack(expand=True, fill="both")
+
+        style = ttk.Style()
+        style.configure("Treeview", background="#DDDDDD", foreground="black", fieldbackground="#DDDDDD")
+        style.configure("Treeview.Heading", background="#CCCCCC", foreground="black")
 
         columns = ("ID", "Usuario", "Nombre", "Apellido", "Tipo DNI", "DNI", "Fec. Nac.", "Obra Social", "Barrio", "Calle", "N°", "Email", "Teléfono")
         self.tree = ttk.Treeview(tree_container, columns=columns, show="headings")
