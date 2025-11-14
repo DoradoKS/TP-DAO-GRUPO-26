@@ -535,3 +535,81 @@ class TurnoDAO:
             return []
         finally:
             if conn: conn.close()
+        
+    # --- MÉTODOS DE REPORTES ---
+
+    def reporte_turnos_por_medico_y_periodo(self, id_medico, fecha_inicio, fecha_fin):
+        """
+        Reporte 1: Listado de turnos para un médico en un rango de fechas.
+        """
+        conn = None
+        turnos = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            SELECT * FROM Turno 
+            WHERE id_medico = ? 
+              AND DATE(fecha_hora) BETWEEN ? AND ?
+            ORDER BY fecha_hora
+            """
+            cursor.execute(sql, (id_medico, fecha_inicio, fecha_fin))
+            for fila in cursor.fetchall():
+                # Asumo la estructura de tu constructor de Turno
+                turnos.append(Turno(id_turno=fila[0], id_paciente=fila[1], id_medico=fila[2], 
+                                  id_consultorio=fila[3], fecha_hora=fila[4], motivo=fila[5], asistio=fila[6]))
+            return turnos
+        except sqlite3.Error as e:
+            print(f"Error en reporte de turnos por médico: {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
+    def reporte_cantidad_turnos_por_especialidad(self):
+        """
+        Reporte 2: Cantidad de turnos agrupados por especialidad.
+        Usa JOIN para conectar Turno -> Medico -> Especialidad.
+        """
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            # Esta es una consulta compleja que une 3 tablas
+            sql = """
+            SELECT E.nombre, COUNT(T.id_turno) AS Cantidad
+            FROM Turno AS T
+            JOIN Medico AS M ON T.id_medico = M.id_medico
+            JOIN Especialidad AS E ON M.id_especialidad = E.id_especialidad
+            GROUP BY E.nombre
+            ORDER BY Cantidad DESC
+            """
+            cursor.execute(sql)
+            return cursor.fetchall() # Retorna una lista de tuplas (nombre_especialidad, cantidad)
+        except sqlite3.Error as e:
+            print(f"Error en reporte de turnos por especialidad: {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
+    def reporte_asistencia_global(self):
+        """
+        Reporte 4: Conteo global de asistencias vs. inasistencias.
+        """
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = """
+            SELECT
+                SUM(CASE WHEN asistio = 1 THEN 1 ELSE 0 END) AS Asistencias,
+                SUM(CASE WHEN asistio = 0 THEN 1 ELSE 0 END) AS Inasistencias,
+                SUM(CASE WHEN asistio IS NULL THEN 1 ELSE 0 END) AS Pendientes
+            FROM Turno
+            """
+            cursor.execute(sql)
+            return cursor.fetchone() # Retorna una tupla (asist, inasist, pend)
+        except sqlite3.Error as e:
+            print(f"Error en reporte de asistencias: {e}")
+            return []
+        finally:
+            if conn: conn.close()

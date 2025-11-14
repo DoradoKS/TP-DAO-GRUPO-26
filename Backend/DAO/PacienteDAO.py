@@ -241,3 +241,36 @@ class PacienteDAO:
             return []
         finally:
             if conn: conn.close()
+
+
+    # --- MÉTODOS DE REPORTES ---
+
+    def reporte_pacientes_atendidos_por_fecha(self, fecha_inicio, fecha_fin):
+        """
+        Reporte 3: Pacientes únicos que asistieron (asistio = 1) 
+        en un rango de fechas.
+        """
+        conn = None
+        pacientes = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            # Usamos DISTINCT para no repetir pacientes si tuvieron varios turnos
+            sql = """
+            SELECT DISTINCT P.id_paciente, P.nombre, P.apellido, P.dni, P.email
+            FROM Paciente AS P
+            JOIN Turno AS T ON P.id_paciente = T.id_paciente
+            WHERE T.asistio = 1 
+              AND DATE(T.fecha_hora) BETWEEN ? AND ?
+            ORDER BY P.apellido, P.nombre
+            """
+            cursor.execute(sql, (fecha_inicio, fecha_fin))
+            for fila in cursor.fetchall():
+                # (Ajustá esto si tu constructor de Paciente es diferente)
+                pacientes.append(Paciente(id_paciente=fila[0], nombre=fila[1], apellido=fila[2], dni=fila[3], email=fila[4]))
+            return pacientes
+        except sqlite3.Error as e:
+            print(f"Error en reporte de pacientes atendidos: {e}")
+            return []
+        finally:
+            if conn: conn.close()

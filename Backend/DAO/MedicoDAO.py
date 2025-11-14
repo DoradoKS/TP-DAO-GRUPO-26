@@ -267,3 +267,39 @@ class MedicoDAO:
             return []
         finally:
             if conn: conn.close()
+
+    
+    # --- MÉTODO NUEVO (Para el Panel de Reportes) ---
+
+    def obtener_medicos(self):
+        """Obtiene una lista de TODOS los médicos (objetos)."""
+        conn = None
+        medicos = []
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            
+            # Asegurate de que esta consulta coincida con las columnas de tu tabla Medico
+            sql = """
+            SELECT id_medico, usuario, matricula, nombre, apellido, 
+                   tipo_dni, dni, calle, numero_calle, email, telefono, id_especialidad 
+            FROM Medico
+            """
+            
+            cursor.execute(sql)
+            
+            for fila in cursor.fetchall():
+                # Usamos el constructor de tu clase Model/Medico.py
+                medicos.append(Medico(
+                    id_medico=fila[0], usuario=fila[1], matricula=fila[2], 
+                    nombre=fila[3], apellido=fila[4], tipo_dni=fila[5], 
+                    dni=fila[6], calle=fila[7], numero_calle=fila[8], 
+                    email=fila[9], telefono=fila[10], id_especialidad=fila[11]
+                ))
+            return medicos
+            
+        except sqlite3.Error as e:
+            print(f"Error al obtener todos los médicos: {e}")
+            return []
+        finally:
+            if conn: conn.close()

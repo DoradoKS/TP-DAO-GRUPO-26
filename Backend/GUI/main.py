@@ -4,10 +4,10 @@ from .panel_pacientes import PanelPacientes
 from .panel_medicos import PanelMedicos
 from .panel_especialidades import PanelEspecialidades
 from .abm_turnos import ABMTurnos
-from .reportes import Reportes
 from .consulta_historial import ConsultaHistorial
 from .abm_consultorios import GestionConsultorios
 from .abm_obras_sociales import GestionObrasSociales
+from .panel_reportes import PanelReportes
 
 class MainMenu(tk.Tk):
     def __init__(self, rol, usuario):
@@ -144,7 +144,7 @@ class MainMenu(tk.Tk):
         if self.rol != "Administrador":
             messagebox.showerror("Permiso denegado", "Solo administradores pueden ver reportes.")
             return
-        Reportes(self).grab_set()
+        PanelReportes(self).grab_set()
 
     def open_consulta_historial(self):
         ConsultaHistorial(self, self.usuario, self.rol).grab_set()
