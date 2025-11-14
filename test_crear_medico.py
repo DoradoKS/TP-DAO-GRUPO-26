@@ -56,7 +56,7 @@ def test_crear_medico():
     
     medico_dao = MedicoDAO()
     id_creado, mensaje = medico_dao.crear_medico(medico_test, "admin")
-    
+
     if id_creado:
         print(f"✓ Médico creado exitosamente (ID: {id_creado})")
         print(f"  Mensaje: {mensaje}")

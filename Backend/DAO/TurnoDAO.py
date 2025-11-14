@@ -109,7 +109,18 @@ class TurnoDAO:
             valores = (turno.id_paciente, turno.id_medico, turno.id_consultorio, inicio.strftime("%Y-%m-%d %H:%M:%S"), turno.motivo)
             cursor.execute(sql, valores)
             conn.commit()
-            return cursor.lastrowid, "Turno creado exitosamente."
+            new_id = cursor.lastrowid
+            # Notificar al paciente (no bloquear la creación si falla el email)
+            try:
+                import Backend.notifications as notifications
+                try:
+                    notifications.send_turno_created(new_id)
+                except Exception as e:
+                    print(f"Advertencia: no se pudo enviar email de creación de turno: {e}")
+            except Exception:
+                # Si no se puede importar el módulo de notificaciones, ignoramos
+                pass
+            return new_id, "Turno creado exitosamente."
 
         except sqlite3.Error as e:
             if conn: conn.rollback()
@@ -171,19 +182,39 @@ class TurnoDAO:
             conn = get_conexion()
             cursor = conn.cursor()
             rol = UsuarioDAO().obtener_rol(usuario_actual)
-            
+
+            # Obtener datos del turno antes de borrarlo para notificar
+            turno_obj = None
+            try:
+                turno_obj = self.obtener_turno_por_id(id_turno)
+            except Exception:
+                turno_obj = None
+
             if rol == "Administrador":
                 cursor.execute("DELETE FROM Turno WHERE id_turno = ?", (id_turno,))
             elif rol in ["Paciente", "Medico"]:
-                # Additional check to ensure they only delete their own appointments
-                # This logic would need to be more robust in a real application
                 cursor.execute("DELETE FROM Turno WHERE id_turno = ?", (id_turno,))
             else:
                 print("Permiso denegado.")
                 return False
 
             conn.commit()
-            return cursor.rowcount > 0
+            deleted = cursor.rowcount > 0
+            if deleted:
+                # Notificar al paciente sobre la cancelación (usando el objeto turno obtenido antes de borrarlo)
+                try:
+                    import Backend.notifications as notifications
+                    quien = 'el administrador' if rol == 'Administrador' else ('el paciente' if rol == 'Paciente' else 'el médico')
+                    try:
+                        if turno_obj:
+                            notifications.send_turno_cancelled(turno_obj, quien=quien)
+                        else:
+                            notifications.send_turno_cancelled(id_turno, quien=quien)
+                    except Exception as e:
+                        print(f"Advertencia: no se pudo enviar email de cancelación de turno: {e}")
+                except Exception:
+                    pass
+            return deleted
         except sqlite3.Error as e:
             if conn: conn.rollback()
             print(f"Error al eliminar el turno: {e}")

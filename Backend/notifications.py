@@ -98,6 +98,102 @@ def _send_email(to_email, subject, body):
         return False
 
 
+def send_welcome_email(to_email, username, password, nombre=None):
+    """Envía un email de bienvenida con usuario y contraseña al paciente recién registrado."""
+    if not to_email:
+        print("[Notificaciones] No se envió welcome email: paciente sin email.")
+        return False
+    nombre_saludo = nombre or "Paciente"
+    subject = "Registro exitoso en la plataforma"
+    body = (
+        f"Hola {nombre_saludo},\n\n"
+        "Su cuenta ha sido creada correctamente en la plataforma de la clínica.\n\n"
+        f"Usuario: {username}\n"
+        f"Contraseña: {password}\n\n"
+        "Saludos,\nEl equipo de la clínica"
+    )
+    return _send_email(to_email, subject, body)
+
+
+def send_turno_created(id_turno):
+    """Envía email al paciente informando que se creó un turno (usa id_turno para recuperar datos)."""
+    try:
+        turno = TurnoDAO().obtener_turno_por_id(id_turno)
+        if not turno:
+            print(f"[Notificaciones] No se encontró turno {id_turno} para notificar creación.")
+            return False
+        paciente = PacienteDAO().buscar_paciente_por_id_paciente(turno.id_paciente)
+        medico = MedicoDAO().obtener_medico_por_id(turno.id_medico)
+        if not paciente or not paciente.email:
+            print(f"[Notificaciones] Paciente sin email para turno {id_turno}")
+            return False
+
+        hora = None
+        try:
+            hora = datetime.strptime(turno.fecha_hora, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%d %H:%M')
+        except Exception:
+            hora = str(turno.fecha_hora)
+
+        medico_nombre = f"{medico.nombre} {medico.apellido}" if medico else "el médico"
+        subject = "Turno confirmado"
+        body = (
+            f"Hola {paciente.nombre} {paciente.apellido},\n\n"
+            f"Su turno ha sido registrado con éxito.\n\n"
+            f"Fecha y hora: {hora}\n"
+            f"Médico: {medico_nombre}\n\n"
+            "Si desea cancelar el turno puede hacerlo desde la plataforma o contactando al centro.\n\n"
+            "Saludos,\nEl equipo de la clínica"
+        )
+        return _send_email(paciente.email, subject, body)
+    except Exception as e:
+        print(f"[Notificaciones] Error al preparar email de turno creado: {e}")
+        return False
+
+
+def send_turno_cancelled(turno_or_id, quien='El sistema'):
+    """Envía email al paciente informando que su turno fue cancelado.
+
+    Acepta un objeto Turno o un id_turno. Si recibe el id y no encuentra el turno,
+    intenta informar y retorna False.
+    """
+    try:
+        # Aceptar tanto objeto Turno como id_turno
+        if hasattr(turno_or_id, 'id_turno'):
+            turno = turno_or_id
+        else:
+            turno = TurnoDAO().obtener_turno_por_id(turno_or_id)
+
+        if not turno:
+            print(f"[Notificaciones] No se encontró turno {turno_or_id} para notificar cancelación.")
+            return False
+
+        paciente = PacienteDAO().buscar_paciente_por_id_paciente(turno.id_paciente)
+        medico = MedicoDAO().obtener_medico_por_id(turno.id_medico)
+        if not paciente or not paciente.email:
+            print(f"[Notificaciones] Paciente sin email para turno {getattr(turno, 'id_turno', 'N/A')}")
+            return False
+
+        hora = None
+        try:
+            hora = datetime.strptime(turno.fecha_hora, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%d %H:%M')
+        except Exception:
+            hora = str(turno.fecha_hora)
+
+        medico_nombre = f"{medico.nombre} {medico.apellido}" if medico else "el médico"
+        subject = "Turno cancelado"
+        body = (
+            f"Hola {paciente.nombre} {paciente.apellido},\n\n"
+            f"Le informamos que su turno programado para {hora} con {medico_nombre} ha sido CANCELADO por {quien}.\n\n"
+            f"Motivo: {turno.motivo or 'No especificado'}\n\n"
+            "Si lo desea, puede solicitar un nuevo turno desde la plataforma.\n\n"
+            "Saludos,\nEl equipo de la clínica"
+        )
+        return _send_email(paciente.email, subject, body)
+    except Exception as e:
+        print(f"[Notificaciones] Error al preparar email de turno cancelado: {e}")
+        return False
+
+
 def _find_and_send(window_start_dt, window_end_dt):
     """Busca turnos cuya fecha_hora esté entre window_start_dt y window_end_dt y envía notificaciones."""
     # Usamos TurnoDAO para obtener turnos del día (optimización simple)

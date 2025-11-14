@@ -102,9 +102,16 @@ class MainMenu(tk.Tk):
             btn_recetas = self.create_button(frame_fila_3, "Mis Recetas", lambda: PanelRecetas(self, self.usuario).grab_set(), button_properties)
             btn_recetas.pack(side="left", padx=10)
         
-        # --- Fila 6 (Salir, separado por la fila 5) ---
+        # --- Fila 6 (Cerrar sesión / Salir, separado por la fila 5) ---
+        btn_cerrar_sesion = self.create_button(main_frame, "Cerrar sesión", self.cerrar_sesion, button_properties)
+        btn_cerrar_sesion.grid(row=6, column=0, padx=10, pady=10)
+
         btn_salir = self.create_button(main_frame, "Salir", self.destroy, button_properties)
         btn_salir.grid(row=6, column=1, padx=10, pady=10)
+
+        # Espacio opcional a la derecha para balance visual
+        placeholder = tk.Frame(main_frame, bg="#333333")
+        placeholder.grid(row=6, column=2)
 
     def create_button(self, parent, text, command, properties):
         border_frame = tk.Frame(parent, bg="#FFD700", bd=2)
@@ -161,3 +168,17 @@ class MainMenu(tk.Tk):
             messagebox.showerror("Permiso denegado", "Solo administradores pueden gestionar obras sociales.")
             return
         GestionObrasSociales(self, self.usuario).grab_set()
+
+    def cerrar_sesion(self):
+        """Cierra la sesión actual y vuelve a la ventana de login sin salir del programa."""
+        if not messagebox.askyesno("Cerrar sesión", "¿Desea cerrar la sesión y volver a la pantalla de login?"):
+            return
+        try:
+            # Destruir la ventana actual del menú
+            self.destroy()
+            # Importar LoginWindow localmente para evitar import circular
+            from GUI.login import LoginWindow
+            # Abrir la ventana de login (nueva instancia)
+            LoginWindow().mainloop()
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo cerrar la sesión: {e}")

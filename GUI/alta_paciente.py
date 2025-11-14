@@ -48,7 +48,8 @@ class AltaPaciente(tk.Toplevel):
                 self.entries[label_text] = entry
             
             elif widget_type == "DateEntry":
-                self.fecha_nac_entry = DateEntry(main_frame, width=33, date_pattern='yyyy/mm/dd', state="readonly")
+                # Usar patrón ISO consistente y obtener la fecha con get_date()
+                self.fecha_nac_entry = DateEntry(main_frame, width=33, date_pattern='yyyy-mm-dd', state="readonly")
                 self.fecha_nac_entry.grid(row=i, column=1, padx=8, pady=5, sticky="w")
 
             elif widget_type == "Combobox":
@@ -79,7 +80,14 @@ class AltaPaciente(tk.Toplevel):
         contrasena = self.entries["Contraseña:"].get().strip()
         nombre = self.entries["Nombre:"].get().strip()
         apellido = self.entries["Apellido:"].get().strip()
-        fecha_nac = self.fecha_nac_entry.get()
+        # Obtener objeto date y formatear a ISO YYYY-MM-DD
+        try:
+            fecha_nac_date = self.fecha_nac_entry.get_date()
+            fecha_nac = fecha_nac_date.strftime("%Y-%m-%d")
+        except Exception:
+            messagebox.showerror("Error", "Fecha de nacimiento inválida.")
+            return
+
         dni = self.entries["DNI:"].get().strip()
         email = self.entries["Email:"].get().strip()
         telefono = self.entries["Teléfono:"].get().strip()
@@ -90,11 +98,7 @@ class AltaPaciente(tk.Toplevel):
             messagebox.showerror("Error", "Todos los campos son obligatorios.")
             return
 
-        try:
-            datetime.strptime(fecha_nac, "%Y/%m/%d")
-        except ValueError:
-            messagebox.showerror("Error", "Fecha de nacimiento inválida.")
-            return
+        # fecha_nac ya validada/formateada como YYYY-MM-DD usando get_date()
 
         tipo_dni_nombre = self.tipo_dni_combo.get()
         obra_social_nombre = self.obra_social_combo.get()
@@ -128,6 +132,15 @@ class AltaPaciente(tk.Toplevel):
         id_creado, mensaje = paciente_dao.crear_paciente(paciente, self.usuario)
         if id_creado:
             messagebox.showinfo("Éxito", f"{mensaje} (ID: {id_creado})")
+            # Enviar email de bienvenida (no bloquear en caso de error)
+            try:
+                import Backend.notifications as notifications
+                try:
+                    notifications.send_welcome_email(email, usuario, contrasena, nombre + ' ' + apellido)
+                except Exception as e:
+                    print(f"Advertencia: no se pudo enviar email de bienvenida: {e}")
+            except Exception:
+                pass
             self.destroy()
         else:
             messagebox.showerror("Error", mensaje)
