@@ -563,13 +563,66 @@ class TurnoDAO:
                     
             print(f"Debug: Horarios libres encontrados: {horarios_libres}")
             return horarios_libres
-
         except sqlite3.Error as e:
             print(f"Error al calcular disponibilidad: {e}")
             return []
         finally:
             if conn: conn.close()
-        
+
+    def calcular_horarios_con_estado(self, id_medico, fecha):
+        """
+        Devuelve todos los slots (de 30 minutos) del día para el médico indicando si están ocupados.
+        Retorna una lista de tuplas: (hora 'HH:MM', ocupado_bool, dict_info)
+        dict_info puede contener: {'id_turno':..., 'id_paciente':..., 'paciente_nombre':...} cuando esté ocupado, o None cuando esté libre.
+        """
+        DURACION_MINUTOS = 30
+        try:
+            fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
+            dia_semana_py = fecha_dt.weekday() + 1
+        except ValueError:
+            print("Formato de fecha de entrada inválido. Use YYYY-MM-DD.")
+            return []
+
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+
+            # Obtener franjas laborales
+            sql_franja = "SELECT hora_inicio, hora_fin FROM FranjaHoraria WHERE id_medico = ? AND dia_semana = ?"
+            cursor.execute(sql_franja, (id_medico, dia_semana_py))
+            franjas_trabajo = cursor.fetchall()
+            if not franjas_trabajo:
+                return []
+
+            # Obtener turnos reservados con la hora exacta (HH:MM) y datos de paciente
+            # Traemos también el nombre del paciente para mostrarlo en la UI
+            sql_reservados = ("SELECT T.id_turno, T.id_paciente, P.nombre, P.apellido, strftime('%H:%M', T.fecha_hora) as hora "
+                              "FROM Turno T LEFT JOIN Paciente P ON T.id_paciente = P.id_paciente "
+                              "WHERE T.id_medico = ? AND DATE(T.fecha_hora) = ?")
+            cursor.execute(sql_reservados, (id_medico, fecha))
+            reservados = {row[4]: {'id_turno': row[0], 'id_paciente': row[1], 'paciente_nombre': f"{row[2]} {row[3]}".strip()} for row in cursor.fetchall()}
+
+            horarios = []
+            for inicio_str, fin_str in franjas_trabajo:
+                hora_actual = datetime.strptime(f"{fecha} {inicio_str}", "%Y-%m-%d %H:%M")
+                hora_fin = datetime.strptime(f"{fecha} {fin_str}", "%Y-%m-%d %H:%M")
+                while hora_actual < hora_fin:
+                    slot_inicio_str = hora_actual.strftime('%H:%M')
+                    info = None
+                    ocupado = False
+                    if slot_inicio_str in reservados:
+                        ocupado = True
+                        info = reservados[slot_inicio_str]
+                    horarios.append((slot_inicio_str, ocupado, info))
+                    hora_actual += timedelta(minutes=DURACION_MINUTOS)
+
+            return horarios
+        except sqlite3.Error as e:
+            print(f"Error al calcular disponibilidad con estado: {e}")
+            return []
+        finally:
+            if conn: conn.close()
     # --- MÉTODOS DE REPORTES ---
 
     def reporte_turnos_por_medico_y_periodo(self, id_medico, fecha_inicio, fecha_fin):

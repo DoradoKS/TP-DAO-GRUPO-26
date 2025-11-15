@@ -233,15 +233,41 @@ class ABMTurnos(tk.Toplevel):
             return
 
         if not hasattr(self, 'turno_dao'):
-             self.turno_dao = TurnoDAO()
-        disponibles = self.turno_dao.calcular_horarios_disponibles(id_medico, fecha)
+            self.turno_dao = TurnoDAO()
+
+        # Usamos el nuevo método que retorna todos los slots con su estado
+        slots = self.turno_dao.calcular_horarios_con_estado(id_medico, fecha)
 
         self.slots_listbox.delete(0, tk.END)
-        if disponibles:
-            for h in disponibles:
-                self.slots_listbox.insert(tk.END, h)
+        # Guardamos el estado localmente para validar selección
+        self.slots_estado = []
+        if slots:
+            for slot_idx, (h, ocupado, info) in enumerate(slots):
+                if ocupado:
+                    paciente_nombre = info.get('paciente_nombre') if info else None
+                    if paciente_nombre:
+                        texto = f"{h}  -  Turno ya asignado"
+                    else:
+                        texto = f"{h}  -  Turno ya asignado"
+                    self.slots_listbox.insert(tk.END, texto)
+                    try:
+                        # color de fondo rojo para ocupados
+                        self.slots_listbox.itemconfig(slot_idx, bg='#f8c0c0')
+                    except Exception:
+                        pass
+                    self.slots_estado.append((h, True, info))
+                else:
+                    texto = f"{h}  -  Disponible"
+                    self.slots_listbox.insert(tk.END, texto)
+                    try:
+                        # color de fondo verde para disponibles
+                        self.slots_listbox.itemconfig(slot_idx, bg='#c7f0c1')
+                    except Exception:
+                        pass
+                    self.slots_estado.append((h, False, None))
         else:
-            self.slots_listbox.insert(tk.END, "No hay horarios disponibles para este día.")
+            self.slots_listbox.insert(tk.END, "No hay franjas laborales para este médico o fecha.")
+            self.slots_estado = []
 
     def solicitar_turno(self):
         fecha_obj = self.fecha_entry.get_date()
@@ -256,7 +282,18 @@ class ABMTurnos(tk.Toplevel):
         if not selected:
             messagebox.showerror("Error", "Seleccione un horario de la lista.")
             return
-        hora_seleccionada = self.slots_listbox.get(selected[0])
+        idx = selected[0]
+        # Comprobamos estado si existe
+        if hasattr(self, 'slots_estado') and idx < len(self.slots_estado):
+            hora_val, ocupado, info = self.slots_estado[idx]
+            if ocupado:
+                messagebox.showerror("Error", "El horario seleccionado ya tiene un turno asignado.")
+                return
+            hora_seleccionada = hora_val
+        else:
+            # Fallback: extraer hora del texto (formato 'HH:MM  -  ...')
+            raw = self.slots_listbox.get(idx)
+            hora_seleccionada = raw.split()[0]
         
         fecha_hora_seleccionada_str = f"{fecha} {hora_seleccionada}:00"
         fecha_hora_seleccionada_dt = datetime.strptime(fecha_hora_seleccionada_str, "%Y-%m-%d %H:%M:%S")
