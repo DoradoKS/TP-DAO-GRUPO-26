@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 # Imports absolutos desde Backend
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
@@ -37,12 +37,26 @@ class Reportes(tk.Toplevel):
         ttk.Radiobutton(report_frame, text="Turnos por Día", variable=self.report_type, value="dia").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Asistencias vs Inasistencias por Mes", variable=self.report_type, value="asistencia_mes").pack(anchor="w")
 
-        generate_button = ttk.Button(report_frame, text="Generar Reporte", command=self.generar_reporte)
-        generate_button.pack(pady=5)
+        actions_frame = ttk.Frame(report_frame)
+        actions_frame.pack(pady=5, fill='x')
+
+        generate_button = ttk.Button(actions_frame, text="Generar Reporte", command=self.generar_reporte)
+        generate_button.pack(side='left')
+
+        # Botón inline para exportar PDF junto al botón de generar (inicialmente deshabilitado)
+        # Hacemos el botón inline más ancho para que quepa la etiqueta
+        self.export_button_inline = ttk.Button(actions_frame, text='Exportar a PDF', command=self._export_fig_to_pdf, state='disabled', width=18)
+        self.export_button_inline.pack(side='left', padx=8)
 
         # Chart display
         self.chart_frame = ttk.Frame(main_frame)
         self.chart_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Export controls (fuera del chart_frame para no ser destruidos al regenerar el gráfico)
+        export_frame = ttk.Frame(main_frame)
+        export_frame.pack(padx=10, pady=(0,10), fill="x")
+        self.export_button = ttk.Button(export_frame, text='Exportar a PDF', command=self._export_fig_to_pdf, state='disabled', width=18)
+        self.export_button.pack(side='left')
 
     def generar_reporte(self):
         report_type = self.report_type.get()
@@ -109,9 +123,36 @@ class Reportes(tk.Toplevel):
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
 
+        # Botón interno visible encima del gráfico (fallback prominente)
+        try:
+            if hasattr(self, '_inner_export_button') and self._inner_export_button:
+                self._inner_export_button.destroy()
+        except Exception:
+            pass
+        try:
+            inner_frame = ttk.Frame(self.chart_frame)
+            inner_frame.pack(fill='x')
+            # botón en tk para garantizar contraste en temas oscuros
+            self._inner_export_button = tk.Button(inner_frame, text='Exportar a PDF', command=self._export_fig_to_pdf, bg='#ffcc00')
+            self._inner_export_button.pack(side='left', padx=6, pady=6)
+        except Exception:
+            pass
+
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+        # Guardamos figura para permitir exportar a PDF y habilitamos los botones
+        self.current_fig = fig
+        try:
+            if hasattr(self, 'export_button'):
+                self.export_button.config(state='normal')
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'export_button_inline'):
+                self.export_button_inline.config(state='normal')
+        except Exception:
+            pass
 
     def reporte_asistencias_vs_inasistencias_por_mes(self):
         turno_dao = TurnoDAO()
@@ -136,6 +177,46 @@ class Reportes(tk.Toplevel):
         ax.legend()
         plt.tight_layout()
 
+        # Botón interno visible encima del gráfico (fallback prominente)
+        try:
+            if hasattr(self, '_inner_export_button') and self._inner_export_button:
+                self._inner_export_button.destroy()
+        except Exception:
+            pass
+        try:
+            inner_frame = ttk.Frame(self.chart_frame)
+            inner_frame.pack(fill='x')
+            self._inner_export_button = tk.Button(inner_frame, text='Exportar a PDF', command=self._export_fig_to_pdf, bg='#ffcc00')
+            self._inner_export_button.pack(side='left', padx=6, pady=6)
+        except Exception:
+            pass
+
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+        # Guardamos figura para permitir exportar a PDF y habilitamos los botones
+        self.current_fig = fig
+        try:
+            if hasattr(self, 'export_button'):
+                self.export_button.config(state='normal')
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'export_button_inline'):
+                self.export_button_inline.config(state='normal')
+        except Exception:
+            pass
+
+    def _export_fig_to_pdf(self):
+        """Exporta la figura actual a PDF mediante un diálogo de guardado."""
+        if not hasattr(self, 'current_fig') or self.current_fig is None:
+            messagebox.showwarning('Advertencia', 'No hay gráfico para exportar.')
+            return
+        path = filedialog.asksaveasfilename(defaultextension='.pdf', filetypes=[('PDF files', '*.pdf')], title='Guardar gráfico como PDF')
+        if not path:
+            return
+        try:
+            self.current_fig.savefig(path, format='pdf')
+            messagebox.showinfo('Exportado', f'Gráfico exportado a {path}')
+        except Exception as e:
+            messagebox.showerror('Error', f'No se pudo exportar el PDF: {e}')

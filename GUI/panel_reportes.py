@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
@@ -97,8 +97,13 @@ class PanelReportes(tk.Toplevel):
         btn_reporte3 = ttk.Button(filter_frame, text="Pacientes Atendidos", command=self.generar_reporte_3, style="Report.TButton", width=25)
         btn_reporte3.grid(row=2, column=3, padx=10, pady=5, sticky="ew")
 
-        btn_reporte4 = ttk.Button(filter_frame, text="Gráfico Asistencias", command=self.generar_reporte_4, style="Report.TButton", width=25)
+        btn_reporte4 = ttk.Button(filter_frame, text="Gráfico Asistencias", command=self.generar_reporte_4, style="Report.TButton", width=20)
         btn_reporte4.grid(row=3, column=3, padx=10, pady=5, sticky="ew")
+
+        # Botón de exportar PDF junto al botón de Gráfico Asistencias (deshabilitado hasta generar el gráfico)
+        # Hacemos el botón un poco más ancho para que quepa el texto completo
+        self.btn_export_asist_pdf = ttk.Button(filter_frame, text="Exportar PDF", command=self._export_asistencias_pdf, state='disabled', width=16)
+        self.btn_export_asist_pdf.grid(row=3, column=4, padx=(0,10), pady=5, sticky="w")
 
         # --- Título de Resultados (NUEVO) ---
         self.label_titulo_reporte = ttk.Label(main_frame, text="Resultados del Reporte", style="Header.TLabel", font=("Arial", 14, "bold"))
@@ -380,6 +385,28 @@ class PanelReportes(tk.Toplevel):
             canvas.draw()
             canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+            # Guardamos figura para exportar y habilitamos el botón
+            try:
+                self.current_fig = fig
+                self.btn_export_asist_pdf.config(state='normal')
+            except Exception:
+                pass
+
         except Exception as e:
             print(f"Error generando reporte 4 (gráfico): {e}")
             messagebox.showerror("Error de Backend", "No se pudo generar el gráfico. Revise la consola.", parent=self)
+
+    def _export_asistencias_pdf(self):
+        """Exporta la figura de asistencias actualmente mostrada a PDF."""
+        if not hasattr(self, 'current_fig') or self.current_fig is None:
+            messagebox.showwarning("Advertencia", "No hay gráfico para exportar.", parent=self)
+            return
+        path = filedialog.asksaveasfilename(defaultextension='.pdf', filetypes=[('PDF files', '*.pdf')], title='Guardar gráfico como PDF', parent=self)
+        if not path:
+            return
+        try:
+            # La figura es de matplotlib.figure.Figure y tiene savefig
+            self.current_fig.savefig(path, format='pdf')
+            messagebox.showinfo("Exportado", f'Gráfico exportado a {path}', parent=self)
+        except Exception as e:
+            messagebox.showerror("Error", f'No se pudo exportar el PDF: {e}', parent=self)
