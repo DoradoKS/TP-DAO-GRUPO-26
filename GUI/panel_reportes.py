@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox, filedialog
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
-# Matplotlib is optional; import lazily and handle missing module gracefully
+
 try:
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -59,7 +59,6 @@ class PanelReportes(tk.Toplevel):
         
         # --- Datos para combos ---
         self.medicos = []
-
         self.create_widgets()
         self.cargar_combo_medicos()
 
@@ -276,7 +275,6 @@ class PanelReportes(tk.Toplevel):
         except Exception as e:
             print(f"Error generando reporte 3: {e}")
             messagebox.showerror("Error de Backend", "No se pudo generar el reporte. Revise la consola.", parent=self)
-
 
 
     def generar_reporte_4(self):

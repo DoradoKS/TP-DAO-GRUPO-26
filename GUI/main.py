@@ -80,11 +80,17 @@ class MainMenu(tk.Tk):
             btn_turnos.grid(row=3, column=1, padx=10, pady=20)
             btn_obras_sociales.grid(row=3, column=2, padx=10, pady=20)
         elif self.rol == "Medico":
-            # Médicos solo ven Turnos (y pueden acceder a historial desde la fila 3)
-            btn_turnos.grid(row=2, column=1, padx=10, pady=20)
+            # Médicos: crear un frame centrado y colocar allí un botón específico
+            center_frame = tk.Frame(main_frame, bg="#333333")
+            center_frame.grid(row=2, column=0, columnspan=3)
+            centered_btn = self.create_button(center_frame, "Gestionar Turnos", self.open_abm_turnos, button_properties)
+            centered_btn.pack(pady=10, padx=200)
         else:
-            # Paciente u otros: solo Turnos
-            btn_turnos.grid(row=2, column=1, padx=10, pady=20)
+            # Paciente u otros: centrar Turnos también
+            center_frame = tk.Frame(main_frame, bg="#333333")
+            center_frame.grid(row=2, column=0, columnspan=3)
+            centered_btn = self.create_button(center_frame, "Gestionar Turnos", self.open_abm_turnos, button_properties)
+            centered_btn.pack(pady=10, padx=200)
 
         # --- Fila 3 (ahora en la fila 4 de la grilla) ---
         frame_fila_3 = tk.Frame(main_frame, bg="#333333")

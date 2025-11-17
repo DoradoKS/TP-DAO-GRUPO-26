@@ -18,7 +18,7 @@ class PanelPacientes(tk.Toplevel):
         main_frame.pack(expand=True, fill="both")
         
         button_container = tk.Frame(main_frame, bg="#333333")
-        button_container.pack(expand=True)
+        button_container.pack(expand=True, pady=20)
 
         button_properties = {
             "font": ("Arial", 14), "bg": "#CCCCCC", "fg": "#000000",
@@ -33,9 +33,9 @@ class PanelPacientes(tk.Toplevel):
 
         for text, command in buttons_to_create:
             border_frame = tk.Frame(button_container, bg="#FFD700", bd=2)
-            border_frame.pack(pady=10)
+            border_frame.pack(pady=8, padx=60, fill='x')
             btn = tk.Button(border_frame, text=text, command=command, **button_properties)
-            btn.pack()
+            btn.pack(fill='x', padx=8, pady=4)
             btn.bind("<Enter>", self.on_enter)
             btn.bind("<Leave>", self.on_leave)
 
