@@ -202,7 +202,18 @@ class ABMTurnos(tk.Toplevel):
             self.current_filter_fecha = fecha_str
         # Comportamiento por rol
         if self.rol == "Administrador":
-            turnos = turno_dao.obtener_todos_los_turnos()
+            # Por defecto mostrar solo los turnos del día actual; permitir filtrar por fecha
+            if getattr(self, 'current_filter_fecha', None):
+                turno_fecha = self.current_filter_fecha
+            else:
+                turno_fecha = date.today().strftime("%Y-%m-%d")
+                self.current_filter_fecha = turno_fecha
+            try:
+                # Actualizar la DateEntry para que muestre la fecha filtrada
+                self.fecha_entry.set_date(datetime.strptime(turno_fecha, "%Y-%m-%d").date())
+            except Exception:
+                pass
+            turnos = turno_dao.obtener_turnos_por_fecha(turno_fecha)
         elif self.rol == "Medico":
             # Por defecto mostrar solo los turnos del día actual
             medico = MedicoDAO().obtener_medico_por_usuario(self.usuario)
@@ -214,10 +225,27 @@ class ABMTurnos(tk.Toplevel):
                 else:
                     turno_fecha = date.today().strftime("%Y-%m-%d")
                     self.current_filter_fecha = turno_fecha
+                try:
+                    self.fecha_entry.set_date(datetime.strptime(turno_fecha, "%Y-%m-%d").date())
+                except Exception:
+                    pass
                 turnos = turno_dao.obtener_turnos_por_medico_y_fecha(medico.id_medico, turno_fecha)
         elif self.rol == "Paciente":
+            # Por defecto mostrar solo los turnos del día actual para el paciente; permitir filtrar por fecha
             pac = PacienteDAO().obtener_paciente_por_usuario(self.usuario)
-            turnos = turno_dao.obtener_turnos_por_paciente(pac.id_paciente) if pac else []
+            if not pac:
+                turnos = []
+            else:
+                if getattr(self, 'current_filter_fecha', None):
+                    turno_fecha = self.current_filter_fecha
+                else:
+                    turno_fecha = date.today().strftime("%Y-%m-%d")
+                    self.current_filter_fecha = turno_fecha
+                try:
+                    self.fecha_entry.set_date(datetime.strptime(turno_fecha, "%Y-%m-%d").date())
+                except Exception:
+                    pass
+                turnos = turno_dao.obtener_turnos_por_paciente_y_fecha(pac.id_paciente, turno_fecha)
         else:
             turnos = []
 
