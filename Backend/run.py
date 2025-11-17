@@ -7,6 +7,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from GUI.welcome import WelcomeScreen
 from Backend.notifications import start_scheduler
+from Backend.BDD.Conexion import close_real_conexion
 
 if __name__ == "__main__":
     print("Iniciando la Interfaz Gráfica...")
@@ -16,4 +17,10 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"No se pudo iniciar el scheduler de notificaciones: {e}")
     app = WelcomeScreen()
-    app.mainloop()
+    try:
+        app.mainloop()
+    finally:
+        try:
+            close_real_conexion()
+        except Exception as e:
+            print(f"Error cerrando la conexión: {e}")
