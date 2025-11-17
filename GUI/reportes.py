@@ -3,7 +3,6 @@ from tkinter import ttk, messagebox, filedialog
 # Imports absolutos desde Backend
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
-from Backend.DAO.MedicoDAO import MedicoDAO
 
 try:
     import matplotlib.pyplot as plt
@@ -34,7 +33,7 @@ class Reportes(tk.Toplevel):
         report_frame.pack(padx=10, pady=10, fill="x")
 
         self.report_type = tk.StringVar()
-        ttk.Radiobutton(report_frame, text="Turnos por Médico", variable=self.report_type, value="medico").pack(anchor="w")
+        # Opción 'Turnos por Médico' removida
         ttk.Radiobutton(report_frame, text="Turnos por Paciente", variable=self.report_type, value="paciente").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Turnos por Día", variable=self.report_type, value="dia").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Turnos por Especialidad", variable=self.report_type, value="especialidad").pack(anchor="w")
@@ -83,15 +82,7 @@ class Reportes(tk.Toplevel):
         except Exception:
             pass
 
-    def reporte_turnos_por_medico(self):
-        turno_dao = TurnoDAO()
-        medico_dao = MedicoDAO()
-        
-        medicos = medico_dao.obtener_todos_los_medicos()
-        medico_nombres = [f"{m.nombre} {m.apellido}" for m in medicos]
-        turnos_counts = [turno_dao.contar_turnos_por_medico(m.id_medico) for m in medicos]
-
-        self.crear_grafico_barras(medico_nombres, turnos_counts, "Turnos por Médico", "Médicos", "Cantidad de Turnos")
+    # 'Turnos por Médico' report removed
 
     def reporte_turnos_por_paciente(self):
         turno_dao = TurnoDAO()

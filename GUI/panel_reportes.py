@@ -94,8 +94,7 @@ class PanelReportes(tk.Toplevel):
         ttk.Separator(filter_frame, orient='vertical').grid(row=0, column=2, rowspan=4, sticky='ns', padx=20, pady=5)
 
         # --- Columna 3: BOTONES DE ACCIÓN ---
-        btn_reporte1 = ttk.Button(filter_frame, text="Turnos por Médico", command=self.generar_reporte_1, style="Report.TButton", width=25)
-        btn_reporte1.grid(row=0, column=3, padx=10, pady=5, sticky="ew")
+        # Nota: opción 'Turnos por Médico' eliminada según pedido
         
         btn_reporte2 = ttk.Button(filter_frame, text="Turnos por Especialidad", command=self.generar_reporte_2, style="Report.TButton", width=25)
         btn_reporte2.grid(row=1, column=3, padx=10, pady=5, sticky="ew")
@@ -141,127 +140,40 @@ class PanelReportes(tk.Toplevel):
             print(f"Error cargando médicos: {e}")
             messagebox.showerror("Error", "No se pudo cargar la lista de médicos.")
 
-    def generar_reporte_1(self):
-        self.label_titulo_reporte.config(text="Reporte: Turnos por Médico")
-        # Deshabilitar export buttons por defecto
-        try:
-            self.btn_export_reporte2.configure(state="disabled")
-        except Exception:
-            pass
-        try:
-            self.btn_export_reporte4.configure(state="disabled")
-        except Exception:
-            pass
-        # Ocultar el gráfico (si está visible)
-        self.chart_frame.pack_forget()
-        # Mostrar la tabla (TreeView)
-        self.tree.pack(fill="both", expand=True, side="left")
-        
-        # 1. Obtener datos de los filtros
-        medico_nombre = self.combo_medicos.get()
-        
-        # --- OBTENEMOS DATOS DEL CALENDARIO ---
-        try:
-            fecha_obj_inicio = self.entry_fecha_inicio.get_date()
-            fecha_obj_fin = self.entry_fecha_fin.get_date()
-            
-            # Formateamos a string para el DAO
-            fecha_inicio = fecha_obj_inicio.strftime('%Y-%m-%d')
-            fecha_fin = fecha_obj_fin.strftime('%Y-%m-%d')
-        except Exception as e:
-            messagebox.showerror("Error de fecha", "Fechas inválidas seleccionadas.", parent=self)
-            return
-        # ----------------------------------------
-
-        # 2. Validar entradas
-        if not medico_nombre:
-            messagebox.showwarning("Faltan datos", "Debe seleccionar un médico.", parent=self)
-            return
-
-        if fecha_obj_fin < fecha_obj_inicio:
-            messagebox.showwarning("Rango inválido", "La 'Fecha Fin' no puede ser anterior a la 'Fecha Inicio'.", parent=self)
-            return
-            
-        id_medico = None
-        for m in self.medicos:
-            if f"{m.nombre} {m.apellido}" == medico_nombre:
-                id_medico = m.id_medico
-                break
-        
-        if id_medico is None:
-             messagebox.showerror("Error", "Médico no válido.", parent=self)
-             return
-
-        # 3. Limpiar tabla (TreeView)
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        self.tree.configure(columns=("id", "paciente", "fecha", "hora", "estado"), show="headings")
-        self.tree.heading("id", text="ID Turno")
-        self.tree.heading("paciente", text="Paciente")
-        self.tree.heading("fecha", text="Fecha")
-        self.tree.heading("hora", text="Hora")
-        self.tree.heading("estado", text="Estado")
-        self.tree.column("id", width=60, anchor="center")
-        
-        # 4. Llamar al Backend (DAO)
-        try:
-            turnos_encontrados = self.turno_dao.reporte_turnos_por_medico_y_periodo(id_medico, fecha_inicio, fecha_fin)
-            if not turnos_encontrados:
-                messagebox.showinfo("Sin resultados", "No se encontraron turnos para ese médico en ese período.", parent=self)
-                return
-
-            # 5. Poblar la tabla
-            for t in turnos_encontrados:
-                pac = self.paciente_dao.buscar_paciente_por_id_paciente(t.id_paciente)
-                paciente_nombre = f"{pac.nombre} {pac.apellido}" if pac else "N/A"
-                
-                # --- AQUÍ LA CORRECCIÓN ---
-                if t.fecha_hora:
-                    # Si la fecha_hora existe, la partimos
-                    fecha, hora = t.fecha_hora.split(" ")
-                    hora = hora[:5] # (Solo HH:MM)
-                else:
-                    # Si es None, ponemos valores por defecto
-                    fecha = "Fecha N/A"
-                    hora = "Hora N/A"
-                # -------------------------
-                
-                estado = 'Pendiente' if t.asistio is None else ('Asistió' if t.asistio == 1 else 'Inasistencia')
-                
-                self.tree.insert("", "end", values=(
-                    t.id_turno,
-                    paciente_nombre,
-                    fecha,
-                    hora,
-                    estado
-                ))
-        except Exception as e:
-            print(f"Error generando reporte 1: {e}")
-            messagebox.showerror("Error de Backend", "No se pudo generar el reporte. Revise la consola.", parent=self)
-
     
     def generar_reporte_2(self):
         self.label_titulo_reporte.config(text="Reporte: Turnos por Especialidad")
-
         # Ocultar la tabla y preparar el frame del gráfico
         self.tree.pack_forget()
         for widget in self.chart_frame.winfo_children():
             widget.destroy()
         self.chart_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Llamar al Backend (DAO)
+        # Obtener y validar fechas del calendario
         try:
-            datos_reporte = self.turno_dao.reporte_cantidad_turnos_por_especialidad()
+            fecha_obj_inicio = self.entry_fecha_inicio.get_date()
+            fecha_obj_fin = self.entry_fecha_fin.get_date()
+            fecha_inicio = fecha_obj_inicio.strftime('%Y-%m-%d')
+            fecha_fin = fecha_obj_fin.strftime('%Y-%m-%d')
+        except Exception:
+            messagebox.showerror("Error de fecha", "Fechas inválidas seleccionadas.", parent=self)
+            return
+
+        if fecha_obj_fin < fecha_obj_inicio:
+            messagebox.showwarning("Rango inválido", "La 'Fecha Fin' no puede ser anterior a la 'Fecha Inicio'.", parent=self)
+            return
+
+        # Llamar al Backend (DAO) con el rango de fechas
+        try:
+            datos_reporte = self.turno_dao.reporte_cantidad_turnos_por_especialidad_periodo(fecha_inicio, fecha_fin)
             if not datos_reporte:
-                messagebox.showinfo("Sin resultados", "No se encontraron turnos para generar el reporte.", parent=self)
+                messagebox.showinfo("Sin resultados", "No se encontraron turnos para generar el reporte en ese período.", parent=self)
                 return
 
             # Preparar datos para gráfico
             nombres = [d[0] for d in datos_reporte]
             cantidades = [d[1] for d in datos_reporte]
 
-            # Crear figura y dibujar barras
             if not HAS_MATPLOTLIB:
                 messagebox.showwarning("Matplotlib no instalado", "Instale matplotlib para ver el gráfico.", parent=self)
                 return
@@ -269,9 +181,10 @@ class PanelReportes(tk.Toplevel):
             fig = Figure(figsize=(8, 5), dpi=100)
             ax = fig.add_subplot(111)
             ax.bar(nombres, cantidades, color='#4C78A8')
-            ax.set_title('Turnos por Especialidad')
+            ax.set_title(f'Turnos por Especialidad\n{fecha_inicio} a {fecha_fin}')
             ax.set_xlabel('Especialidad')
             ax.set_ylabel('Cantidad de Turnos')
+            ax.set_xticks(range(len(nombres)))
             ax.set_xticklabels(nombres, rotation=45, ha='right')
             fig.tight_layout()
 
@@ -386,10 +299,24 @@ class PanelReportes(tk.Toplevel):
         try:
             # Este método del TurnoDAO ya lo creamos
             # Devuelve una tupla (asistencias, inasistencias, pendientes)
-            datos = self.turno_dao.reporte_asistencia_global()
-            
-            if not datos or (datos[0] is None and datos[1] is None):
-                messagebox.showinfo("Sin resultados", "No hay datos de asistencia para graficar.", parent=self)
+            # Obtener fechas del calendario y validar
+            try:
+                fecha_obj_inicio = self.entry_fecha_inicio.get_date()
+                fecha_obj_fin = self.entry_fecha_fin.get_date()
+                fecha_inicio = fecha_obj_inicio.strftime('%Y-%m-%d')
+                fecha_fin = fecha_obj_fin.strftime('%Y-%m-%d')
+            except Exception:
+                messagebox.showerror("Error de fecha", "Fechas inválidas seleccionadas.", parent=self)
+                return
+
+            if fecha_obj_fin < fecha_obj_inicio:
+                messagebox.showwarning("Rango inválido", "La 'Fecha Fin' no puede ser anterior a la 'Fecha Inicio'.", parent=self)
+                return
+
+            datos = self.turno_dao.reporte_asistencia_por_periodo(fecha_inicio, fecha_fin)
+
+            if not datos or (datos[0] is None and datos[1] is None and datos[2] is None):
+                messagebox.showinfo("Sin resultados", "No hay datos de asistencia para graficar en ese período.", parent=self)
                 return
 
             asistencias = datos[0] if datos[0] is not None else 0

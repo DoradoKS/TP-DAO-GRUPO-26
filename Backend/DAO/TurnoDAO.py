@@ -678,6 +678,54 @@ class TurnoDAO:
         finally:
             if conn: conn.close()
 
+    def reporte_cantidad_turnos_por_especialidad_periodo(self, fecha_inicio, fecha_fin):
+        """
+        Reporte: Cantidad de turnos por especialidad dentro de un rango de fechas.
+        Retorna lista de tuplas (nombre_especialidad, cantidad)
+        """
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = (
+                "SELECT E.nombre, COUNT(T.id_turno) AS Cantidad\n"
+                "FROM Turno AS T\n"
+                "JOIN Medico AS M ON T.id_medico = M.id_medico\n"
+                "JOIN Especialidad AS E ON M.id_especialidad = E.id_especialidad\n"
+                "WHERE DATE(T.fecha_hora) BETWEEN ? AND ?\n"
+                "GROUP BY E.nombre\n"
+                "ORDER BY Cantidad DESC"
+            )
+            cursor.execute(sql, (fecha_inicio, fecha_fin))
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Error en reporte de turnos por especialidad (periodo): {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
+    def reporte_asistencia_por_periodo(self, fecha_inicio, fecha_fin):
+        """Devuelve tupla (asistencias, inasistencias, pendientes) para el rango de fechas dado."""
+        conn = None
+        try:
+            conn = get_conexion()
+            cursor = conn.cursor()
+            sql = (
+                "SELECT\n"
+                "  SUM(CASE WHEN asistio = 1 THEN 1 ELSE 0 END) AS Asistencias,\n"
+                "  SUM(CASE WHEN asistio = 0 THEN 1 ELSE 0 END) AS Inasistencias,\n"
+                "  SUM(CASE WHEN asistio IS NULL THEN 1 ELSE 0 END) AS Pendientes\n"
+                "FROM Turno\n"
+                "WHERE DATE(fecha_hora) BETWEEN ? AND ?"
+            )
+            cursor.execute(sql, (fecha_inicio, fecha_fin))
+            return cursor.fetchone()
+        except sqlite3.Error as e:
+            print(f"Error en reporte de asistencias por periodo: {e}")
+            return []
+        finally:
+            if conn: conn.close()
+
     def reporte_asistencia_global(self):
         """
         Reporte 4: Conteo global de asistencias vs. inasistencias.
