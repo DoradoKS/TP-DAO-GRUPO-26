@@ -39,6 +39,8 @@ class ABMTurnos(tk.Toplevel):
 
         self.create_widgets()
         self.cargar_combos()
+        # Fecha actualmente usada como filtro en la vista (None = sin filtro)
+        self.current_filter_fecha = None
         self.cargar_turnos()
 
     def create_widgets(self):
@@ -69,8 +71,13 @@ class ABMTurnos(tk.Toplevel):
         self.fecha_entry = DateEntry(form_frame, width=20, date_pattern="yyyy-mm-dd", state="readonly", maxdate=self.fecha_max)
         self.fecha_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
 
+        # Botón para mostrar franjas del médico (cuando aplique)
         self.mostrar_horarios_btn = ttk.Button(form_frame, text="Mostrar horarios disponibles", command=self.mostrar_horarios_disponibles)
         self.mostrar_horarios_btn.grid(row=4, column=2, padx=5, pady=5, sticky="w")
+
+        # Botón para filtrar la tabla de turnos por la fecha seleccionada
+        self.filtrar_turnos_btn = ttk.Button(form_frame, text="Filtrar turnos", command=self.filtrar_turnos_por_fecha)
+        self.filtrar_turnos_btn.grid(row=4, column=3, padx=5, pady=5, sticky="w")
 
         horarios_frame = tk.Frame(main_frame, bg="#333333")
         horarios_frame.pack(padx=10, pady=5, fill="x")
@@ -131,8 +138,14 @@ class ABMTurnos(tk.Toplevel):
         self.tree.tag_configure('pendiente', background='#fff3b0')
 
         if self.rol == "Medico":
-            for w in [self.paciente_combo, self.especialidad_combo, self.medico_combo, self.fecha_entry, self.mostrar_horarios_btn, self.slots_listbox]:
+            for w in [self.paciente_combo, self.especialidad_combo, self.medico_combo]:
                 if w: w.configure(state="disabled")
+            # Para médicos dejamos habilitado el filtro por fecha y el botón de filtrar
+            try:
+                self.fecha_entry.configure(state="readonly")
+                self.filtrar_turnos_btn.configure(state="normal")
+            except Exception:
+                pass
             for child in button_frame.winfo_children():
                 if isinstance(child, ttk.Button) and child.cget("text") == "Solicitar Turno":
                     child.pack_forget()
@@ -167,7 +180,7 @@ class ABMTurnos(tk.Toplevel):
         self.medicos = med_dao.obtener_medicos_por_especialidad(esp.id_especialidad)
         self.medico_combo["values"] = [f"{m.nombre} {m.apellido}" for m in self.medicos]
 
-    def cargar_turnos(self):
+    def cargar_turnos(self, filter_fecha=None):
         try:
             TurnoDAO().cerrar_dia()
         except Exception:
@@ -176,11 +189,32 @@ class ABMTurnos(tk.Toplevel):
             self.tree.delete(item)
 
         turno_dao = TurnoDAO()
+        # Si se pasó una fecha de filtro, la guardamos
+        if filter_fecha:
+            # esperar una fecha en formato YYYY-MM-DD o un objeto date
+            if isinstance(filter_fecha, str):
+                fecha_str = filter_fecha
+            else:
+                try:
+                    fecha_str = filter_fecha.strftime("%Y-%m-%d")
+                except Exception:
+                    fecha_str = None
+            self.current_filter_fecha = fecha_str
+        # Comportamiento por rol
         if self.rol == "Administrador":
             turnos = turno_dao.obtener_todos_los_turnos()
         elif self.rol == "Medico":
+            # Por defecto mostrar solo los turnos del día actual
             medico = MedicoDAO().obtener_medico_por_usuario(self.usuario)
-            turnos = turno_dao.obtener_turnos_por_medico(medico.id_medico) if medico else []
+            if not medico:
+                turnos = []
+            else:
+                if getattr(self, 'current_filter_fecha', None):
+                    turno_fecha = self.current_filter_fecha
+                else:
+                    turno_fecha = date.today().strftime("%Y-%m-%d")
+                    self.current_filter_fecha = turno_fecha
+                turnos = turno_dao.obtener_turnos_por_medico_y_fecha(medico.id_medico, turno_fecha)
         elif self.rol == "Paciente":
             pac = PacienteDAO().obtener_paciente_por_usuario(self.usuario)
             turnos = turno_dao.obtener_turnos_por_paciente(pac.id_paciente) if pac else []
@@ -319,7 +353,7 @@ class ABMTurnos(tk.Toplevel):
         id_creado, mensaje = TurnoDAO().crear_turno(turno, self.usuario)
         if id_creado:
             messagebox.showinfo("Éxito", mensaje)
-            self.cargar_turnos()
+            self.cargar_turnos(self.current_filter_fecha)
             self.mostrar_horarios_disponibles()
         else:
             messagebox.showerror("Error", mensaje)
@@ -335,10 +369,22 @@ class ABMTurnos(tk.Toplevel):
             return
         if TurnoDAO().eliminar_turno(id_turno, self.usuario):
             messagebox.showinfo("OK", "Turno cancelado.")
-            self.cargar_turnos()
+            self.cargar_turnos(self.current_filter_fecha)
             self.mostrar_horarios_disponibles()
         else:
             messagebox.showerror("Error", "No se pudo cancelar el turno.")
+
+    def filtrar_turnos_por_fecha(self):
+        """Handler para el botón 'Filtrar turnos' - carga la tabla con la fecha seleccionada."""
+        try:
+            fecha_obj = self.fecha_entry.get_date()
+            fecha_str = fecha_obj.strftime("%Y-%m-%d")
+        except Exception:
+            messagebox.showerror("Error de fecha", "Fecha inválida. Seleccione una fecha del calendario.")
+            return
+        # Guardamos y recargamos la vista
+        self.current_filter_fecha = fecha_str
+        self.cargar_turnos(self.current_filter_fecha)
 
     def _obtener_paciente_seleccionado_de_turno(self):
         sel = self.tree.selection()
