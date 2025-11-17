@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 # Imports absolutos desde Backend
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
@@ -20,6 +20,8 @@ class Reportes(tk.Toplevel):
         super().__init__(parent)
         self.title("Reportes y Estadísticas")
         self.geometry("800x600")
+        # Figura actual mostrada (para exportar)
+        self.current_fig = None
 
         self.create_widgets()
 
@@ -35,10 +37,15 @@ class Reportes(tk.Toplevel):
         ttk.Radiobutton(report_frame, text="Turnos por Médico", variable=self.report_type, value="medico").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Turnos por Paciente", variable=self.report_type, value="paciente").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Turnos por Día", variable=self.report_type, value="dia").pack(anchor="w")
+        ttk.Radiobutton(report_frame, text="Turnos por Especialidad", variable=self.report_type, value="especialidad").pack(anchor="w")
         ttk.Radiobutton(report_frame, text="Asistencias vs Inasistencias por Mes", variable=self.report_type, value="asistencia_mes").pack(anchor="w")
 
         generate_button = ttk.Button(report_frame, text="Generar Reporte", command=self.generar_reporte)
         generate_button.pack(pady=5)
+
+        # Botón para exportar el gráfico actual a PDF (deshabilitado hasta que haya gráfico)
+        self.export_btn = ttk.Button(report_frame, text="Exportar PDF", command=self.export_current_chart, state="disabled")
+        self.export_btn.pack(pady=5)
 
         # Chart display
         self.chart_frame = ttk.Frame(main_frame)
@@ -61,10 +68,20 @@ class Reportes(tk.Toplevel):
             self.reporte_turnos_por_medico()
         elif report_type == "paciente":
             self.reporte_turnos_por_paciente()
+        elif report_type == "especialidad":
+            self.reporte_turnos_por_especialidad()
         elif report_type == "dia":
             self.reporte_turnos_por_dia()
         elif report_type == "asistencia_mes":
             self.reporte_asistencias_vs_inasistencias_por_mes()
+        # Si se generó un gráfico, habilitar el botón de exportar. Lo hacemos aquí por si alguna ruta no lo setea.
+        try:
+            if self.current_fig is not None:
+                self.export_btn.configure(state="normal")
+            else:
+                self.export_btn.configure(state="disabled")
+        except Exception:
+            pass
 
     def reporte_turnos_por_medico(self):
         turno_dao = TurnoDAO()
@@ -108,10 +125,29 @@ class Reportes(tk.Toplevel):
         ax.set_ylabel(ylabel)
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
+        # Guardar figura actual y habilitar exportación
+        self.current_fig = fig
+        try:
+            self.export_btn.configure(state="normal")
+        except Exception:
+            pass
 
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def reporte_turnos_por_especialidad(self):
+        turno_dao = TurnoDAO()
+        datos = turno_dao.reporte_cantidad_turnos_por_especialidad()
+        if not datos:
+            messagebox.showinfo("Info", "No hay datos de turnos por especialidad.")
+            return
+
+        nombres = [d[0] for d in datos]
+        cantidades = [d[1] for d in datos]
+
+        # Reutilizamos el helper de gráfico de barras
+        self.crear_grafico_barras(nombres, cantidades, "Turnos por Especialidad", "Especialidad", "Cantidad de Turnos")
 
     def reporte_asistencias_vs_inasistencias_por_mes(self):
         turno_dao = TurnoDAO()
@@ -139,3 +175,18 @@ class Reportes(tk.Toplevel):
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def export_current_chart(self):
+        """Exporta la figura actual a un archivo PDF usando un diálogo de guardado."""
+        if not _HAS_MATPLOTLIB or self.current_fig is None:
+            messagebox.showerror("Error", "No hay un gráfico para exportar o matplotlib no está disponible.")
+            return
+
+        path = filedialog.asksaveasfilename(defaultextension='.pdf', filetypes=[('PDF files', '*.pdf')], title='Guardar gráfico como PDF')
+        if not path:
+            return
+        try:
+            self.current_fig.savefig(path, format='pdf')
+            messagebox.showinfo("Exportado", f"Gráfico exportado correctamente a:\n{path}")
+        except Exception as e:
+            messagebox.showerror("Error al exportar", f"No se pudo exportar el gráfico: {e}")

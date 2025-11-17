@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from Backend.DAO.TurnoDAO import TurnoDAO
 from Backend.DAO.MedicoDAO import MedicoDAO
 from Backend.DAO.PacienteDAO import PacienteDAO
@@ -54,6 +54,8 @@ class PanelReportes(tk.Toplevel):
         self.turno_dao = TurnoDAO()
         self.medico_dao = MedicoDAO()
         self.paciente_dao = PacienteDAO()
+        # Figura actual para exportar
+        self.current_fig = None
         
         # --- Datos para combos ---
         self.medicos = []
@@ -68,6 +70,10 @@ class PanelReportes(tk.Toplevel):
         # --- Frame de Filtros y Acciones ---
         filter_frame = ttk.LabelFrame(main_frame, text="Filtros y Reportes", style="TLabelframe")
         filter_frame.pack(padx=20, pady=20, fill="x")
+
+        # Asegurar columnas para botones y sus export buttons
+        filter_frame.grid_columnconfigure(3, weight=1)
+        filter_frame.grid_columnconfigure(4, weight=0)
 
         # --- Columna 0 y 1: FILTROS ---
         ttk.Label(filter_frame, text="Médico:", style="TLabel").grid(row=0, column=0, padx=10, pady=10, sticky="e")
@@ -93,12 +99,18 @@ class PanelReportes(tk.Toplevel):
         
         btn_reporte2 = ttk.Button(filter_frame, text="Turnos por Especialidad", command=self.generar_reporte_2, style="Report.TButton", width=25)
         btn_reporte2.grid(row=1, column=3, padx=10, pady=5, sticky="ew")
-        
+        # Export button for reporte 2 (disabled until chart exists)
+        self.btn_export_reporte2 = ttk.Button(filter_frame, text="Exportar PDF", command=self.export_current_chart, style="Report.TButton", width=12, state="disabled")
+        self.btn_export_reporte2.grid(row=1, column=4, padx=(5,10), pady=5, sticky="w")
         btn_reporte3 = ttk.Button(filter_frame, text="Pacientes Atendidos", command=self.generar_reporte_3, style="Report.TButton", width=25)
         btn_reporte3.grid(row=2, column=3, padx=10, pady=5, sticky="ew")
-
         btn_reporte4 = ttk.Button(filter_frame, text="Gráfico Asistencias", command=self.generar_reporte_4, style="Report.TButton", width=25)
         btn_reporte4.grid(row=3, column=3, padx=10, pady=5, sticky="ew")
+        # Export button for reporte 4 (disabled until chart exists)
+        self.btn_export_reporte4 = ttk.Button(filter_frame, text="Exportar PDF", command=self.export_current_chart, style="Report.TButton", width=12, state="disabled")
+        self.btn_export_reporte4.grid(row=3, column=4, padx=(5,10), pady=5, sticky="w")
+
+        # Nota: botón global eliminado para mostrar botones de export junto a cada reporte
 
         # --- Título de Resultados (NUEVO) ---
         self.label_titulo_reporte = ttk.Label(main_frame, text="Resultados del Reporte", style="Header.TLabel", font=("Arial", 14, "bold"))
@@ -131,6 +143,15 @@ class PanelReportes(tk.Toplevel):
 
     def generar_reporte_1(self):
         self.label_titulo_reporte.config(text="Reporte: Turnos por Médico")
+        # Deshabilitar export buttons por defecto
+        try:
+            self.btn_export_reporte2.configure(state="disabled")
+        except Exception:
+            pass
+        try:
+            self.btn_export_reporte4.configure(state="disabled")
+        except Exception:
+            pass
         # Ocultar el gráfico (si está visible)
         self.chart_frame.pack_forget()
         # Mostrar la tabla (TreeView)
@@ -223,46 +244,65 @@ class PanelReportes(tk.Toplevel):
     def generar_reporte_2(self):
         self.label_titulo_reporte.config(text="Reporte: Turnos por Especialidad")
 
-        # Ocultar el gráfico (si está visible)
-        self.chart_frame.pack_forget()
-        # Mostrar la tabla (TreeView)
-        self.tree.pack(fill="both", expand=True, side="left")
-        
-        # 1. Limpiar y Reconfigurar tabla (TreeView)
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-            
-        # --- RECONFIGURAR COLUMNAS PARA REPORTE 2 ---
-        self.tree.configure(columns=("especialidad", "cantidad"), show="headings")
-        self.tree.heading("especialidad", text="Especialidad")
-        self.tree.heading("cantidad", text="Cantidad de Turnos")
-        self.tree.column("especialidad", width=200) # Damos más ancho
-        self.tree.column("cantidad", width=150, anchor="center")
-        # ---------------------------------------------
-        
-        # 2. Llamar al Backend (DAO)
+        # Ocultar la tabla y preparar el frame del gráfico
+        self.tree.pack_forget()
+        for widget in self.chart_frame.winfo_children():
+            widget.destroy()
+        self.chart_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Llamar al Backend (DAO)
         try:
-            # Este método del DAO ya lo creamos
             datos_reporte = self.turno_dao.reporte_cantidad_turnos_por_especialidad()
-            
             if not datos_reporte:
                 messagebox.showinfo("Sin resultados", "No se encontraron turnos para generar el reporte.", parent=self)
                 return
 
-            # 3. Poblar la tabla
-            for (especialidad_nombre, cantidad) in datos_reporte:
-                self.tree.insert("", "end", values=(
-                    especialidad_nombre,
-                    cantidad
-                ))
-        
+            # Preparar datos para gráfico
+            nombres = [d[0] for d in datos_reporte]
+            cantidades = [d[1] for d in datos_reporte]
+
+            # Crear figura y dibujar barras
+            if not HAS_MATPLOTLIB:
+                messagebox.showwarning("Matplotlib no instalado", "Instale matplotlib para ver el gráfico.", parent=self)
+                return
+
+            fig = Figure(figsize=(8, 5), dpi=100)
+            ax = fig.add_subplot(111)
+            ax.bar(nombres, cantidades, color='#4C78A8')
+            ax.set_title('Turnos por Especialidad')
+            ax.set_xlabel('Especialidad')
+            ax.set_ylabel('Cantidad de Turnos')
+            ax.set_xticklabels(nombres, rotation=45, ha='right')
+            fig.tight_layout()
+
+            # Mostrar en canvas
+            canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+            # Guardar figura actual y habilitar exportación (específico para reporte 2)
+            self.current_fig = fig
+            try:
+                self.btn_export_reporte2.configure(state="normal")
+            except Exception:
+                pass
+
         except Exception as e:
-            print(f"Error generando reporte 2: {e}")
+            print(f"Error generando reporte 2 (gráfico): {e}")
             messagebox.showerror("Error de Backend", "No se pudo generar el reporte. Revise la consola.", parent=self)
 
 
     def generar_reporte_3(self):
         self.label_titulo_reporte.config(text="Reporte: Pacientes Atendidos")
+        # Deshabilitar export buttons
+        try:
+            self.btn_export_reporte2.configure(state="disabled")
+        except Exception:
+            pass
+        try:
+            self.btn_export_reporte4.configure(state="disabled")
+        except Exception:
+            pass
         # Ocultar el gráfico (si está visible)
         self.chart_frame.pack_forget()
         # Mostrar la tabla (TreeView)
@@ -380,6 +420,27 @@ class PanelReportes(tk.Toplevel):
             canvas.draw()
             canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+            # Guardar figura actual y habilitar exportación (específico para reporte 4)
+            self.current_fig = fig
+            try:
+                self.btn_export_reporte4.configure(state="normal")
+            except Exception:
+                pass
+
         except Exception as e:
             print(f"Error generando reporte 4 (gráfico): {e}")
             messagebox.showerror("Error de Backend", "No se pudo generar el gráfico. Revise la consola.", parent=self)
+
+    def export_current_chart(self):
+        """Abre un diálogo para exportar la figura actual a PDF."""
+        if not HAS_MATPLOTLIB or self.current_fig is None:
+            messagebox.showerror("Error", "No hay un gráfico para exportar o matplotlib no está disponible.", parent=self)
+            return
+        path = filedialog.asksaveasfilename(defaultextension='.pdf', filetypes=[('PDF files', '*.pdf')], title='Guardar gráfico como PDF', parent=self)
+        if not path:
+            return
+        try:
+            self.current_fig.savefig(path, format='pdf')
+            messagebox.showinfo("Exportado", f"Gráfico exportado correctamente a:\n{path}", parent=self)
+        except Exception as e:
+            messagebox.showerror("Error al exportar", f"No se pudo exportar el gráfico: {e}", parent=self)
